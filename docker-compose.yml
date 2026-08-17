@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kag-postgres
+    environment:
+      POSTGRES_DB: key_artifact_generator
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - kag_pgdata:/var/lib/postgresql/data
+      # schema + seed run automatically on FIRST start of the volume
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/src/db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    ports:
+      - "5433:5432"          # exposed for inspection (host port 5433 avoids clashing with local Postgres)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d key_artifact_generator"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    build: .
+    container_name: kag-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: key_artifact_generator
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+volumes:
+  kag_pgdata:

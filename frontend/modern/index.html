@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Key Artifact Generator — Modern UI</title>
+<link rel="stylesheet" href="/modern/css/style.css">
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header id="appHeader">
+  <div class="brand">
+    <button id="btnBurger" class="icon-btn" title="Show / hide menu" aria-label="Toggle side menu">&#9776;</button>
+    <span class="logo">KA</span>
+    <div>
+      <h1>Key Artifact Generator</h1>
+      <small>Project key artifacts — Kick-Off · AIN · IPP · WBS for JIRA</small>
+    </div>
+  </div>
+  <div class="header-actions">
+    <label class="hdr-field">
+      <span>Project</span>
+      <select id="projectSelect"></select>
+    </label>
+    <div class="settings-wrap">
+      <button id="btnSummary" class="icon-btn" title="Project Summary" aria-label="Project Summary" aria-expanded="false">&#128202;</button>
+      <div id="summaryPopover" class="settings-popover summary-popover" hidden>
+        <h4>Project Summary <span class="sum-key" id="summaryHeadKey"></span></h4>
+        <div id="summaryBody"><!-- computed values --></div>
+      </div>
+    </div>
+    <div class="settings-wrap">
+      <button id="btnSettings" class="icon-btn" title="Display settings" aria-label="Display settings" aria-expanded="false">&#9881;</button>
+      <div id="settingsPopover" class="settings-popover" hidden>
+        <h4>Display Settings</h4>
+        <label class="switch" title="Transparent glass surfaces">
+          <b>Glass</b>
+          <input id="optGlass" type="checkbox">
+          <span></span>
+        </label>
+        <label class="switch" title="3D controls and cards">
+          <b>3D</b>
+          <input id="opt3d" type="checkbox">
+          <span></span>
+        </label>
+        <label class="depth-control" title="3D depth">
+          <b>Depth</b>
+          <input id="optDepth" type="range" min="0" max="10" value="6">
+        </label>
+        <label class="color-control" title="Theme color">
+          <b>Color</b>
+          <select id="optColor">
+          <optgroup label="Themes">
+            <option value="ocean">Ocean</option>
+            <option value="emerald">Emerald</option>
+            <option value="sunset">Sunset</option>
+            <option value="glossy">Glossy Transparent</option>
+          </optgroup>
+          <optgroup label="RGB">
+            <option value="red">Red (RGB)</option>
+            <option value="green">Green (RGB)</option>
+            <option value="blue">Blue (RGB)</option>
+          </optgroup>
+          <optgroup label="VIBGYOR">
+            <option value="violet">Violet</option>
+            <option value="indigo">Indigo</option>
+            <option value="blue">Blue</option>
+            <option value="green">Green</option>
+            <option value="yellow">Yellow</option>
+            <option value="orange">Orange</option>
+            <option value="red">Red</option>
+            <option value="vibgyor">Rainbow (VIBGYOR)</option>
+          </optgroup>
+          </select>
+        </label>
+      </div>
+    </div>
+    <button id="btnLayout" class="icon-btn" title="Switch to Tabbed layout" aria-label="Switch content layout">&#128450;</button>
+    <button id="btnNewProject" class="icon-btn" title="New Project" aria-label="New Project">&#65291;</button>
+    <button id="btnGenWbs" class="icon-btn" title="Generate WBS (for JIRA upload)" aria-label="Generate WBS">&#128736;</button>
+    <label class="hdr-field layout-switch">
+      <span>Layout</span>
+      <select id="layoutSelect" title="Switch layout" aria-label="Switch layout">
+        <option value="/" selected>Modern UI</option>
+        <option value="/excel">Excel UI</option>
+        <option value="/webapp">Web App UI</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<!-- ===== Two-column layout ===== -->
+<div id="layout">
+
+  <!-- Left column: navigation accordions -->
+  <aside id="sidebar">
+    <nav id="navAccordion"></nav>
+  </aside>
+
+  <!-- Right column: content accordions -->
+  <main id="content">
+    <div id="contentHead">
+      <h2 id="contentTitle">Application Data</h2>
+      <span id="contentHint"></span>
+    </div>
+    <div id="contentBody"></div>
+  </main>
+</div>
+
+<!-- Modal / popup root -->
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script src="/js/api.js"></script>
+<script src="/modern/js/app.js"></script>
+<!-- Reuse the artifact renderers from the classic UI (they register into the App shim) -->
+<script src="/js/sheets/kickoff.js"></script>
+<script src="/js/sheets/ain.js"></script>
+<script src="/js/sheets/ainproject.js"></script>
+<script src="/js/sheets/ippappinfo.js"></script>
+<script src="/js/sheets/ippscope.js"></script>
+<script src="/js/sheets/ippstakeholder.js"></script>
+<script src="/js/sheets/ippconfig.js"></script>
+<script src="/js/sheets/ippprocess.js"></script>
+<script src="/js/sheets/wbsjira.js"></script>
+<script src="/js/sheets/folderstructure.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  Modern.init().catch((e) => {
+    console.error(e);
+    alert('Failed to start: ' + e.message + '\nIs the backend running? (npm start / docker compose up)');
+  });
+});
+</script>
+</body>
+</html>

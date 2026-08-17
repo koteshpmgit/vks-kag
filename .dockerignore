@@ -1,0 +1,6 @@
+# NOTE: backend/node_modules is deliberately NOT ignored - the image build
+# copies the host-installed dependency tree (see Dockerfile for why).
+backend/.env
+**/*.log
+.git
+README.md

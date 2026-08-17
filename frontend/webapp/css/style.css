@@ -1,0 +1,543 @@
+/* Key Artifact Generator — Web App UI
+   Header menu + left nav + single-page content. Builds on the design tokens
+   and shared components (.btn, .icon-btn, .hdr-field, .nav-group, .tbl,
+   .form-grid, .modal, .toast, ...) defined in /modern/css/style.css. */
+
+#waHeader {
+  position: sticky; top: 0; z-index: 60;
+  display: flex; align-items: center; gap: 18px;
+  padding: 10px 22px;
+  /* fully transparent like every other section — was the theme's own
+     colored gradient, kept deliberately opaque earlier because the header
+     text is white and needs a dark-enough backdrop to stay legible; left
+     white here since a custom background is usually dark enough, but pick
+     a dark Background color if the header text gets hard to read */
+  background: transparent;
+  color: #fff; box-shadow: var(--shadow);
+  border-bottom: 1px solid rgba(255,255,255,.14);
+  flex-wrap: wrap;
+}
+.wa-brand { display: flex; align-items: center; gap: 12px; cursor: pointer; flex-shrink: 0; }
+.wa-brand .logo {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: linear-gradient(135deg, #67e8f9, #14b8a6 48%, #22c55e);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; letter-spacing: .5px; color: #042f2e;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 10px 24px rgba(8,47,73,.24);
+}
+.wa-brand h1 { margin: 0; font-size: 16px; font-weight: 700; }
+.wa-brand small { color: #cbd5e1; font-size: 11px; }
+
+/* ---- Header menu: icon-only buttons (no visible text label) for Home,
+   Project Summary and each group, so the row stays narrow enough to keep
+   the header a single thin line. Each group icon opens a small dropdown
+   listing that group's sections; Home/Summary navigate directly. ---- */
+#waHeaderMenu { display: flex; align-items: center; gap: 4px; }
+#waHeaderMenu .icon-btn.active {
+  background: rgba(255,255,255,.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.3);
+}
+.wa-menu-item { position: relative; }
+.wa-menu-item.current > .icon-btn {
+  background: rgba(255,255,255,.22);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.3);
+}
+.wa-menu-dropdown {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 130;
+  min-width: 220px; padding: 6px; border: 1px solid rgba(255,255,255,.16);
+  border-radius: 10px; box-shadow: 0 18px 44px rgba(15,23,42,.45); animation: pop .14s ease;
+  /* dark tinted glass (not opaque #0f172a) so the sub-menu list matches the
+     transparent/blurred look used everywhere else on the Web App UI — dark
+     tint (not the light one used for content cards) keeps the light-colored
+     link text below legible; Glossy theme overrides this further down */
+  background: rgba(255,255,255,.94);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+.wa-menu-item.open .wa-menu-dropdown { display: block; }
+.wa-menu-dropdown a {
+  display: block; padding: 8px 10px; border-radius: 7px; color: #000;
+  font-size: 12.5px; text-decoration: none; cursor: pointer;
+}
+.wa-menu-dropdown a:hover { background: rgba(15,23,42,.1); color: #000; }
+.wa-menu-dropdown a.active { background: var(--accent-soft); color: #000; }
+
+/* Header icon popovers use a light surface and black type, independent of
+   the selected page background or display theme. */
+.settings-popover:not(.summary-popover) {
+  background: rgba(255,255,255,.96); color: #000;
+  border-color: rgba(15,23,42,.2);
+}
+.settings-popover:not(.summary-popover)::before {
+  background: rgba(255,255,255,.96); border-color: rgba(15,23,42,.2);
+}
+.settings-popover:not(.summary-popover) h4,
+.settings-popover:not(.summary-popover) label,
+.settings-popover:not(.summary-popover) label b,
+.settings-popover:not(.summary-popover) .switch,
+.settings-popover:not(.summary-popover) .depth-control,
+.settings-popover:not(.summary-popover) .color-control,
+.settings-popover:not(.summary-popover) .density-control,
+.settings-popover:not(.summary-popover) .bg-tab,
+.settings-popover:not(.summary-popover) .bg-field,
+.settings-popover:not(.summary-popover) .bg-or,
+.settings-popover:not(.summary-popover) .wizard-note { color: #000; }
+.settings-popover:not(.summary-popover) select,
+.settings-popover:not(.summary-popover) input[type="text"],
+.settings-popover:not(.summary-popover) input[type="file"] {
+  color: #000; background: rgba(255,255,255,.92); border-color: rgba(15,23,42,.25);
+}
+.settings-popover:not(.summary-popover) .bg-tabs { background: rgba(15,23,42,.08); }
+.settings-popover:not(.summary-popover) .bg-tab:hover,
+.settings-popover:not(.summary-popover) .bg-tab.active { color: #000; background: rgba(15,23,42,.12); }
+
+/* ---- Layout: sidebar + single-page content area ---- */
+#waLayout {
+  display: grid; grid-template-columns: minmax(240px, 280px) minmax(0, 1fr); gap: 18px;
+  padding: 18px 22px; max-width: 1500px; margin: 0 auto;
+  min-height: calc(100vh - 62px); align-items: start;
+}
+#waSidebar { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 12px; }
+
+.wa-welcome {
+  background: var(--panel-gradient); border: 1px solid rgba(153,246,228,.6);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px;
+}
+.wa-welcome h3 { margin: 0 0 4px 0; font-size: 14px; color: var(--accent-dark); }
+.wa-welcome h3 span { font-weight: 400; color: var(--text); }
+.wa-welcome p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+
+.wa-home-link {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  background: var(--card-alpha); border-radius: var(--radius); box-shadow: var(--shadow);
+  color: var(--text); text-decoration: none; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.wa-home-link:hover { background: var(--accent-soft); }
+.wa-home-link.active { background: var(--accent); color: #fff; }
+
+body.wa-sidebar-hidden #waSidebar { display: none; }
+body.wa-sidebar-hidden #waLayout { grid-template-columns: 1fr; }
+
+/* ---- Home / welcome page ---- */
+.wa-hero {
+  background: var(--cool-gradient); color: #fff; border-radius: 14px; padding: 26px 28px;
+  margin-bottom: 18px; box-shadow: var(--shadow);
+}
+.wa-hero h2 { margin: 0 0 8px 0; font-size: 24px; }
+.wa-hero p { margin: 0 0 16px 0; color: #cbd5e1; font-size: 13px; max-width: 640px; }
+.wa-hero-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+.wa-hero-stats div { display: flex; flex-direction: column; }
+.wa-hero-stats b { font-size: 22px; }
+.wa-hero-stats span { font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: .4px; }
+
+.wa-home-section { margin-bottom: 22px; }
+.wa-home-section-title {
+  margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+.wa-summary-panel, .wa-summary-page { padding: 16px 18px; }
+
+.wa-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.wa-home-card {
+  background: var(--card-alpha); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px; cursor: pointer; border-top: 4px solid var(--accent);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.wa-home-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(8,47,73,.16); }
+.wa-home-card .icon { font-size: 24px; }
+.wa-home-card h4 { margin: 8px 0 4px 0; font-size: 14px; }
+.wa-home-card p { margin: 0 0 8px 0; color: var(--muted); font-size: 11.5px; }
+.wa-home-card .progress-track { height: 6px; margin-bottom: 4px; }
+.wa-home-card small { color: var(--muted); font-size: 11px; }
+
+/* Keep the desktop Home dashboard inside the available viewport.  The class is
+   applied only while Home is displayed, so data-entry pages retain their
+   comfortable scrolling and spacing. */
+@media (min-width: 981px) {
+  html, body { height: 100%; }
+  body {
+    min-height: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  #waHeader {
+    flex: 0 0 auto; gap: clamp(8px, 1vw, 16px);
+    padding: clamp(6px, .65vw, 9px) clamp(12px, 1.4vw, 20px);
+  }
+  .wa-brand { gap: 8px; }
+  .wa-brand .logo { width: 34px; height: 34px; }
+  .wa-brand h1 { font-size: clamp(13px, 1.05vw, 15px); }
+  .wa-brand small { font-size: 9px; }
+  #waHeaderMenu { gap: 2px; }
+  #waHeader .icon-btn { width: 31px; height: 31px; padding: 5px; }
+  #waHeader .header-actions { gap: 5px; margin-left: auto; }
+  #waHeader .hdr-field { font-size: 10px; }
+  #waHeader .hdr-field select { min-height: 29px; font-size: 11px; }
+
+  #waLayout {
+    flex: 1 1 auto; width: 100%; min-height: 0; height: auto;
+    padding: clamp(8px, .8vw, 12px) clamp(12px, 1.4vw, 20px);
+    gap: clamp(10px, 1vw, 16px); align-items: stretch; overflow: hidden;
+  }
+  #waSidebar {
+    position: static; min-height: 0; max-height: 100%; overflow-y: auto;
+    padding-right: 3px; gap: 7px;
+  }
+  .wa-welcome { padding: 9px 11px; }
+  .wa-welcome h3 { font-size: 12px; }
+  .wa-welcome p { font-size: 10px; line-height: 1.3; }
+  .wa-home-link { padding: 7px 10px; font-size: 11px; }
+  .nav-head { padding: 8px 10px; font-size: 11px; }
+  .nav-items a { padding: 6px 9px 6px 24px; font-size: 10.5px; }
+
+  #waContent {
+    min-width: 0; min-height: 0; height: 100%;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #contentHead { flex: 0 0 auto; margin-bottom: 7px; }
+  #contentHead h2 { font-size: clamp(16px, 1.25vw, 19px); }
+  #contentHint { font-size: clamp(10px, .78vw, 11px); }
+  #contentBody {
+    flex: 1 1 auto; min-height: 0; overflow: auto;
+    padding-right: 4px; scrollbar-gutter: stable;
+  }
+
+  /* Compact shared page components while retaining usable click targets. */
+  .acc-item { margin-bottom: 7px; }
+  .acc-head { padding: 8px 11px; }
+  .acc-title { gap: 8px; }
+  .acc-title h4 { font-size: clamp(11px, .85vw, 13px); }
+  .acc-title small { font-size: clamp(9px, .7vw, 10.5px); line-height: 1.2; }
+  .acc-icon { flex-basis: 27px; width: 27px; height: 27px; font-size: 12px; }
+  .acc-head .badge { padding: 2px 7px; font-size: 9px; }
+  .acc-body { padding: 8px 10px 10px; }
+  .field-legend { gap: 4px; margin-bottom: 6px; }
+  .field-pill { min-height: 18px; padding: 1px 6px; font-size: 9px; }
+
+  .form-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .form-grid label { font-size: clamp(9px, .7vw, 11px); }
+  .form-grid label span { padding: 4px 7px; }
+  .form-grid input, .form-grid textarea, .form-grid select {
+    min-height: 30px; padding: 5px 7px; font-size: clamp(10px, .75vw, 12px);
+  }
+  .form-grid textarea { min-height: 44px; }
+  .form-actions { margin-top: 8px; gap: 6px; }
+  .section-toolbar { margin: 3px 0 6px; gap: 5px; }
+  .btn { min-height: 29px; padding: 5px 9px; font-size: 10.5px; }
+
+  table.tbl { font-size: clamp(9px, .72vw, 11px); }
+  .tbl th { padding: 5px 6px; font-size: clamp(8px, .62vw, 9.5px); }
+  .tbl td { padding: 5px 6px; }
+  .tbl input, .tbl select, .tbl textarea { font-size: inherit; }
+  .tbl .row-actions button { margin-left: 2px; }
+  .summary-card { padding: 10px; }
+  .summary-widgets { gap: 6px; margin-bottom: 7px; }
+  .dash-widget { min-height: 58px; padding: 7px; }
+  .dash-widget strong { font-size: 18px; }
+  .summary-card .srow { padding: 4px 7px; font-size: 10.5px; }
+  .artifact-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .artifact-card { padding: 10px; }
+
+  body.wa-home-page #contentHead { margin-bottom: 7px; }
+  body.wa-home-page .wa-home-section { margin-bottom: 10px; }
+  body.wa-home-page .wa-home-section-title {
+    margin-bottom: 6px; font-size: clamp(11px, .9vw, 13px);
+  }
+  body.wa-home-page .wa-summary-panel { padding: 9px 11px; }
+  body.wa-home-page .wa-summary-panel .summary-hero {
+    padding: 5px 8px; margin-bottom: 6px;
+  }
+  body.wa-home-page .wa-summary-panel .summary-key { font-size: 14px; }
+  body.wa-home-page .wa-summary-panel .summary-type,
+  body.wa-home-page .wa-summary-panel .dash-widget span,
+  body.wa-home-page .wa-summary-panel .dash-widget small { font-size: 9px; }
+  body.wa-home-page .wa-summary-panel .summary-widgets {
+    grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px;
+  }
+  body.wa-home-page .wa-summary-panel .dash-widget {
+    min-height: 48px; padding: 6px 8px;
+  }
+  body.wa-home-page .wa-summary-panel .dash-widget strong { font-size: 17px; }
+  body.wa-home-page .wa-summary-panel .summary-progress { gap: 3px; margin-bottom: 6px; }
+  body.wa-home-page .wa-summary-panel .progress-row { font-size: 10px; }
+  body.wa-home-page .wa-summary-panel .progress-track { height: 5px; }
+  body.wa-home-page .wa-summary-panel .srow { padding: 3px 7px; font-size: 10px; }
+  body.wa-home-page .wa-home-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(6px, .7vw, 10px);
+  }
+  body.wa-home-page .wa-home-card {
+    padding: clamp(7px, .75vw, 11px); border-top-width: 3px;
+  }
+  body.wa-home-page .wa-home-card .icon { font-size: clamp(16px, 1.5vw, 21px); }
+  body.wa-home-page .wa-home-card h4 { margin: 4px 0 2px; font-size: clamp(10px, .85vw, 12px); }
+  body.wa-home-page .wa-home-card p,
+  body.wa-home-page .wa-home-card small { font-size: clamp(9px, .7vw, 10px); }
+  body.wa-home-page .wa-home-card p { margin-bottom: 4px; }
+  body.wa-home-page .wa-home-card .progress-track { height: 4px; margin-bottom: 2px; }
+}
+
+@media (max-width: 980px) {
+  #waHeader { align-items: stretch; flex-direction: column; padding: 12px 16px; }
+  .header-actions { order: 2; width: 100%; }
+  #waLayout { grid-template-columns: 1fr; padding: 14px 16px; min-height: auto; }
+  #waSidebar { position: static; }
+}
+
+@media (max-width: 760px) {
+  .wa-hero { padding: 20px; }
+  .wa-hero h2 { font-size: 20px; }
+}
+
+/* ---- Display Settings: custom accent + density controls ---- */
+.density-control { display: inline-flex; align-items: center; gap: 6px; color: #e0f2fe; font-size: 12px; font-weight: 700; }
+.density-control b { font-size: 11px; letter-spacing: 0; }
+.density-control select {
+  min-height: 24px; border: 1px solid rgba(255,255,255,.24); border-radius: 6px;
+  color: #fff; background: rgba(15,23,42,.28); font: inherit; font-size: 12px;
+  padding: 2px 24px 2px 7px; cursor: pointer;
+}
+.density-control select option { color: var(--text); background: #fff; }
+.settings-popover .density-control { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.settings-popover .density-control select { min-width: 140px; }
+.settings-popover input[type="color"] {
+  -webkit-appearance: none; appearance: none; width: 44px; height: 24px;
+  border: 1px solid rgba(255,255,255,.28); border-radius: 6px; background: none; padding: 0; cursor: pointer;
+}
+.settings-popover input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.settings-popover input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+.settings-popover .btn { width: 100%; margin-top: 2px; }
+
+/* ---- Background popover: color / image / video ---- */
+.bg-popover { width: 280px; }
+.bg-tabs { display: flex; gap: 4px; background: rgba(255,255,255,.08); border-radius: 8px; padding: 3px; }
+.bg-tab {
+  flex: 1; background: transparent; border: none; color: #cbd5e1; font: inherit; font-size: 12px; font-weight: 700;
+  padding: 6px 4px; border-radius: 6px; cursor: pointer; transition: background .15s ease, color .15s ease;
+}
+.bg-tab:hover { color: #fff; }
+.bg-tab.active { background: rgba(255,255,255,.2); color: #fff; }
+.bg-panel { display: flex; flex-direction: column; gap: 10px; }
+.bg-panel[hidden] { display: none; }
+.bg-swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.bg-swatch {
+  width: 100%; aspect-ratio: 1; border-radius: 7px; border: 2px solid rgba(255,255,255,.18);
+  cursor: pointer; padding: 0; transition: transform .12s ease, border-color .12s ease;
+}
+.bg-swatch:hover { transform: scale(1.08); }
+.bg-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(103,232,249,.5); }
+.bg-field { display: flex; flex-direction: column; gap: 4px; color: #e0f2fe; font-size: 12px; font-weight: 700; }
+.bg-field input[type="text"] {
+  border: 1px solid rgba(255,255,255,.24); border-radius: 6px; background: rgba(15,23,42,.28);
+  color: #fff; font: inherit; font-size: 12px; padding: 7px 9px;
+}
+.bg-field input[type="text"]::placeholder { color: #94a3b8; }
+.bg-field input[type="file"] { color: #cbd5e1; font-size: 11.5px; }
+.bg-or { text-align: center; color: #94a3b8; font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; }
+.bg-actions { display: flex; gap: 8px; margin-top: 4px; }
+.bg-actions .btn { width: auto; flex: 1; margin-top: 0; }
+
+/* the actual video layer, injected behind everything on <body>.
+   vw/vh instead of %, and top/left spelled out alongside inset: percentage
+   sizing on a position:fixed element resolves against whatever established
+   its containing block, which is normally the viewport but silently becomes
+   an ancestor instead the moment anything up the tree gets a transform/
+   filter/backdrop-filter (several theme surfaces in this app use exactly
+   that) — vw/vh always mean the real viewport, full stop, so the video
+   can't end up undersized/offset ("moving down") no matter what else is
+   going on elsewhere in the page. object-position anchors the crop to the
+   top of the source footage rather than the (default) center. */
+#bgVideoEl {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw; height: 100vh; min-width: 100vw; min-height: 100vh;
+  object-fit: cover; object-position: center top;
+  z-index: -1; pointer-events: none;
+  margin: 0; padding: 0; border: 0;
+}
+
+/* Automatic contrast for user-selected backgrounds.  The JavaScript marks
+   the page after inspecting a colour/gradient or sampling image/video pixels. */
+body.bg-is-light {
+  --background-fg: #0f172a;
+  --background-muted: #334155;
+  --header-fg: #0f172a;
+  --header-muted: #334155;
+}
+body.bg-is-dark {
+  --background-fg: #f8fafc;
+  --background-muted: #dbeafe;
+  --header-fg: #ffffff;
+  --header-muted: #e2e8f0;
+}
+body.bg-is-light #waHeader { background: rgba(255,255,255,.72); border-bottom-color: rgba(15,23,42,.18); }
+body.bg-is-dark #waHeader { background: rgba(2,6,23,.58); border-bottom-color: rgba(255,255,255,.2); }
+body.bg-is-light #waHeader,
+body.bg-is-dark #waHeader { color: var(--header-fg); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+body.bg-is-light .wa-brand small,
+body.bg-is-dark .wa-brand small,
+body.bg-is-light #waHeader .hdr-field,
+body.bg-is-dark #waHeader .hdr-field { color: var(--header-muted); }
+body.bg-is-light #waHeader .icon-btn,
+body.bg-is-dark #waHeader .icon-btn { color: var(--header-fg); text-shadow: 0 1px 2px rgba(0,0,0,.18); }
+body.bg-is-light #waHeader .hdr-field select {
+  color: #0f172a; background: rgba(255,255,255,.72); border-color: rgba(15,23,42,.25);
+}
+body.bg-is-dark #waHeader .hdr-field select {
+  color: #fff; background: rgba(15,23,42,.55); border-color: rgba(255,255,255,.3);
+}
+
+/* Text sitting directly over the chosen background follows its contrast;
+   text inside light cards and form controls retains the normal dark palette. */
+body.bg-is-light #contentHead,
+body.bg-is-dark #contentHead,
+body.bg-is-light .wa-home-section-title,
+body.bg-is-dark .wa-home-section-title,
+body.bg-is-light .field-legend,
+body.bg-is-dark .field-legend,
+body.bg-is-light table.tbl,
+body.bg-is-dark table.tbl { color: var(--background-fg); }
+body.bg-is-light #contentHint,
+body.bg-is-dark #contentHint { color: var(--background-muted); }
+body.bg-is-dark #contentHead,
+body.bg-is-dark .wa-home-section-title,
+body.bg-is-dark table.tbl { text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+body.bg-is-dark .tbl th,
+body.bg-is-dark .tbl td,
+body.bg-is-dark .tbl td.readonly-cell,
+body.bg-is-dark .readonly-table td { color: var(--background-fg); border-color: rgba(226,232,240,.42); }
+body.bg-is-light .tbl th,
+body.bg-is-light .tbl td { color: #0f172a; border-color: rgba(51,65,85,.38); }
+
+/* Content density: tightens spacing across tables, forms and cards */
+body.wa-compact { font-size: 13px; }
+body.wa-compact .tbl th, body.wa-compact .tbl td { padding: 5px 8px; }
+body.wa-compact .form-grid input, body.wa-compact .form-grid textarea, body.wa-compact .form-grid select { padding: 6px 8px; min-height: 30px; }
+body.wa-compact .form-grid label span { padding: 5px 8px; }
+body.wa-compact .wa-home-card, body.wa-compact .summary-card, body.wa-compact .artifact-card { padding: 11px; }
+body.wa-compact .wa-hero { padding: 18px 20px; }
+body.wa-compact .wa-hero h2 { font-size: 20px; }
+
+/* ---- All content sections are transparent by default on the Web App UI —
+   not just under the Glossy theme, and not gated behind the "Glass" toggle
+   in Display Settings, which never covered these wa-* components anyway.
+   Lets any custom background (color/image/video, set from the Background
+   icon) show through every card. The Glossy theme's own rules further down
+   are more specific and still win when that theme is active; header/hero/
+   popovers are deliberately left out here since they carry light text on a
+   dark fill and would go illegible if made this transparent. */
+.nav-group, .summary-card, .artifact-card, .modal,
+.wa-home-card, .wa-home-link, .wa-welcome, .dash-widget {
+  background: rgba(255,255,255,.5);
+}
+/* the separate "Glass" toggle in Display Settings (on by default) applies
+   its own backdrop-filter to some of these same classes independently of
+   the rule above — cancel it out here so there's no blur regardless of
+   that toggle's state */
+body.fx-glass .nav-group,
+body.fx-glass .summary-card,
+body.fx-glass .artifact-card,
+body.fx-glass .modal {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ---- Application Details / Project Summary (and every Add-row/Edit-row
+   modal, which reuses the same .form-grid) — was still an opaque white
+   block even after the cards around it went transparent. Labels go fairly
+   see-through since they're just field names; inputs stay a bit more opaque
+   so they still read clearly as editable fields against a busy background. */
+.form-grid {
+  background: rgba(255,255,255,.22);
+}
+.form-grid label { background: rgba(255,255,255,.3); }
+.form-grid input, .form-grid textarea, .form-grid select { background: rgba(255,255,255,.6); }
+
+/* ---- CRUD table screens (Hardware Requirements, Software Requirements,
+   HR Plan, Risks, Standards, Phases/Milestones, ...) — fully transparent,
+   every row and cell, no background fill anywhere (not even a faint tint).
+   Borders, text color and box-shadow accents carry the calc/editable/
+   readonly/hover distinctions instead of a background color. No blur
+   either — plain, unfiltered transparency straight through to whatever's
+   behind the page. */
+table.tbl {
+  background: transparent;
+}
+.tbl th { background: transparent; }
+.tbl tr:nth-child(even) td { background: transparent; }
+.tbl tr:hover td { background: transparent; border-color: rgba(100,116,139,.55); }
+.tbl td.calc { background: transparent; }
+.tbl td.editable-cell { background: transparent; }
+.tbl td.readonly-cell,
+.readonly-table td { background: transparent; }
+.editable-table td.editable-cell:hover,
+.mixed-table td.editable-cell:hover { background: transparent; }
+
+/* ---- Glossy Transparent theme: webapp-specific surfaces ---- */
+body[data-theme="glossy"] #waHeader {
+  /* the shared #waHeader rule above now defaults to fully transparent, so
+     this theme needs its own dark glass gradient spelled out explicitly
+     rather than relying on inheriting it */
+  background: var(--cool-gradient);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border-bottom: 1px solid rgba(255,255,255,.3);
+}
+body[data-theme="glossy"] #waHeaderMenu .icon-btn:hover,
+body[data-theme="glossy"] #waHeaderMenu .icon-btn.active,
+body[data-theme="glossy"] .wa-menu-item.current > .icon-btn {
+  background: rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+}
+body[data-theme="glossy"] .wa-menu-dropdown {
+  background: var(--panel-gradient);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid rgba(255,255,255,.4);
+  box-shadow: var(--shadow-3d);
+}
+body[data-theme="glossy"] .wa-menu-dropdown a { color: var(--text); }
+body[data-theme="glossy"] .wa-menu-dropdown a:hover { background: rgba(255,255,255,.35); color: var(--text); }
+body[data-theme="glossy"] .wa-welcome,
+body[data-theme="glossy"] .wa-home-link,
+body[data-theme="glossy"] .wa-home-card,
+body[data-theme="glossy"] .wa-hero {
+  position: relative; overflow: hidden;
+  background: var(--panel-gradient);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-3d);
+}
+body[data-theme="glossy"] .wa-welcome::before,
+body[data-theme="glossy"] .wa-home-card::before,
+body[data-theme="glossy"] .wa-hero::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 46%;
+  background: var(--glossy-shine); pointer-events: none;
+}
+body[data-theme="glossy"] .wa-hero { color: var(--text); }
+body[data-theme="glossy"] .wa-hero p { color: var(--muted); }
+body[data-theme="glossy"] .wa-hero-stats span { color: var(--muted); }
+body[data-theme="glossy"] .wa-home-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 42px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.85);
+}
+body[data-theme="glossy"] .wa-brand .logo {
+  background: linear-gradient(160deg, rgba(255,255,255,.85), rgba(255,255,255,.32) 55%, rgba(255,255,255,.12));
+  color: var(--accent-dark);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 10px 22px rgba(0,0,0,.3);
+}
+body.wa-compact #waLayout { padding: 12px 16px; gap: 12px; }
+body.wa-compact .wa-home-grid { gap: 10px; }
+
+/* ---- Glass / 3D effects: cover the Web App UI's own header + layout ids
+   (the shared rules in /modern/css/style.css target #appHeader / #layout) ---- */
+body.fx-glass #waHeader {
+  backdrop-filter: blur(18px) saturate(1.18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.18);
+}
+body.fx-3d #waLayout { perspective: calc(900px + 700px * var(--depth-scale)); }
+body.fx-3d .wa-home-card,
+body.fx-3d .summary-card {
+  box-shadow: var(--shadow-3d);
+}
+body.fx-3d .wa-home-card:hover {
+  transform: translateY(calc(-2px - 4px * var(--depth-scale))) rotateX(calc(.8deg * var(--depth-scale)));
+}
