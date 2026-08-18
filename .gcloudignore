@@ -1,0 +1,9 @@
+# Controls what gets uploaded to Cloud Build for the backend image (root
+# Dockerfile). frontend is its own build (frontend/Dockerfile, submitted
+# separately from ./frontend) and isn't needed here.
+frontend
+backend/.env
+**/*.log
+.git
+.gcloudignore
+README.md

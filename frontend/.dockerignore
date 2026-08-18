@@ -1,0 +1,5 @@
+# NOTE: node_modules is deliberately NOT ignored - the image build copies
+# the host-installed dependency tree (see Dockerfile for why).
+dist
+.git
+*.log

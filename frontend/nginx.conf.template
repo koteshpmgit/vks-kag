@@ -1,0 +1,36 @@
+server {
+    listen       ${PORT};
+    server_name  _;
+    root         /usr/share/nginx/html;
+    index        index.html;
+
+    # DNS re-resolution for BACKEND_ORIGIN, needed since it's a variable
+    # (Cloud Run's *.run.app hostname, or the docker-compose 'backend' service name).
+    resolver 127.0.0.11 8.8.8.8 valid=30s;
+
+    # Reverse-proxy the API so the browser always calls same-origin /api/...
+    # (matches the React client's relative '/api' base - no CORS/env wiring needed).
+    # BACKEND_ORIGIN is a full scheme+host[:port], e.g. http://backend:3001 in
+    # docker-compose or https://kag-backend-xxxx.a.run.app on Cloud Run.
+    location /api/ {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        # proxy_pass with a variable target must NOT include a URI part: nginx
+        # would then forward that literal URI verbatim (dropping the rest of the
+        # request path) instead of doing the usual location-prefix replacement.
+        # With no URI part here, the full original request URI (e.g. /api/projects
+        # - the backend's Express app is mounted at /api, so it must stay intact)
+        # is forwarded unchanged, exactly like the old static proxy_pass did.
+        proxy_pass $backend_origin;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA fallback so client-side routes (/, /excel, /webapp) work on a hard reload.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

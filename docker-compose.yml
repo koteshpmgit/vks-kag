@@ -19,9 +19,9 @@ services:
       timeout: 3s
       retries: 12
 
-  app:
+  backend:
     build: .
-    container_name: kag-app
+    container_name: kag-backend
     depends_on:
       db:
         condition: service_healthy
@@ -34,6 +34,15 @@ services:
       PGPASSWORD: postgres
     ports:
       - "3001:3001"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: kag-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"          # host port 8080 is taken by an unrelated container on this machine
     restart: unless-stopped
 
 volumes:

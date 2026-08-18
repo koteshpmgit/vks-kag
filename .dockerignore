@@ -1,5 +1,9 @@
 # NOTE: backend/node_modules is deliberately NOT ignored - the image build
 # copies the host-installed dependency tree (see Dockerfile for why).
+# frontend is its own build context (frontend/Dockerfile) and is never
+# referenced by the root Dockerfile - excluding it keeps this build context
+# (and node_modules transfer time) small.
+frontend
 backend/.env
 **/*.log
 .git

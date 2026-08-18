@@ -13,6 +13,18 @@ const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
   res.status(500).json({ error: e.message });
 });
 
+// :id / :rowId are always numeric primary keys - reject non-numeric values with a
+// clean 400 here, instead of letting them reach the DB as an "invalid input syntax
+// for type integer" error that wrap() would otherwise surface as a raw 500.
+// (router.param only accepts one name per call in this Express version - it does
+// not fan out over an array.)
+const validateNumericParam = (req, res, next, value, name) => {
+  if (!/^\d+$/.test(value)) return res.status(400).json({ error: `Invalid ${name}: must be a positive integer` });
+  next();
+};
+router.param('id', validateNumericParam);
+router.param('rowId', validateNumericParam);
+
 // ---------------- Application (Application-Data section) ----------------
 router.get('/application', wrap(async (req, res) => {
   const r = await db.query('SELECT * FROM applications ORDER BY id LIMIT 1');
