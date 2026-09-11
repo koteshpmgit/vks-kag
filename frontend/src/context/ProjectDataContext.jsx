@@ -10,20 +10,24 @@ const COLLECTIONS = [
 
 async function loadAll(projectId) {
   const [application, project, computed, resources, ...colls] = await Promise.all([
-    API.get('/application'),
+    API.get(`/application?project_id=${projectId}`),
     API.get(`/projects/${projectId}`),
     API.get(`/projects/${projectId}/computed`),
     API.get('/resources'),
     ...COLLECTIONS.map((c) => API.get(`/projects/${projectId}/${c}`))
   ]);
-  const [stdRoles, stdTools, matrix, folders, wbs] = await Promise.all([
+  const [stdRoles, stdTools, matrix, folders, wbs, srs] = await Promise.all([
     API.get('/standards/roles'),
     API.get('/standards/tools'),
     API.get('/standards/stakeholder-matrix'),
     API.get('/standards/folder-structure'),
-    API.get(`/projects/${projectId}/wbs`)
+    API.get(`/projects/${projectId}/wbs`),
+    API.get(`/projects/${projectId}/srs`)
   ]);
-  const data = { application, project, computed, resources, stdRoles, stdTools, matrix, folders, wbs };
+  const data = {
+    application, project, computed, resources, stdRoles, stdTools, matrix, folders, wbs,
+    srsDocument: srs.document, analysis: srs.analysis, design: srs.design
+  };
   COLLECTIONS.forEach((c, i) => { data[c] = colls[i]; });
   return data;
 }
@@ -33,6 +37,13 @@ export function ProjectDataProvider({ children }) {
   const [projectId, setProjectId] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Distinct from `loading`: true only until the very first fetch (on mount)
+  // settles, then stays false for the rest of the session. Callers that want
+  // a one-time full-page boot spinner (App.jsx's Boot) should key off this,
+  // not `loading` - `loading` also flips true/false on every later
+  // switchProject()/reload(), which would otherwise unmount (and reset the
+  // state of) whatever's rendering underneath on every project switch.
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const reload = useCallback(async (pid) => {
@@ -65,6 +76,7 @@ export function ProjectDataProvider({ children }) {
         setError(e.message || String(e));
       } finally {
         setLoading(false);
+        setInitialLoading(false);
       }
     })();
   }, []);
@@ -81,7 +93,7 @@ export function ProjectDataProvider({ children }) {
   }, []);
 
   const value = {
-    projects, projectId, data, loading, error,
+    projects, projectId, data, loading, initialLoading, error,
     reload: () => reload(),
     switchProject,
     reloadProjects,

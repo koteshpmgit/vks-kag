@@ -1,13 +1,17 @@
 // REST API for the Key Artifact Generator
 const express = require('express');
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
 const db = require('../db');
 const { computeProject } = require('../services/calc');
 const { generateWbs } = require('../services/wbs');
 const { rowsToXls, rowsToCsv, rowsToHtml, rowsToPdf } = require('../services/exporter');
 const { buildArtifactRows } = require('../services/artifacts');
 const { generateTimesheet, getTimesheet, timesheetRows, dayNameFor } = require('../services/timesheet');
+const { extractFromSrs } = require('../services/ai');
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
   console.error(e);
   res.status(500).json({ error: e.message });
@@ -25,8 +29,37 @@ const validateNumericParam = (req, res, next, value, name) => {
 router.param('id', validateNumericParam);
 router.param('rowId', validateNumericParam);
 
+// Projects belong to the logged-in user who created them (owner_user_id, set
+// in POST /projects below). Runs before every /projects/:id... route.
+// owner_user_id === null covers pre-auth/seeded projects, which stay
+// accessible to any signed-in user rather than becoming permanently orphaned.
+router.use('/projects/:id', (req, res, next) => {
+  db.query('SELECT owner_user_id FROM projects WHERE id=$1', [req.params.id])
+    .then((r) => {
+      if (!r.rows[0]) return res.status(404).json({ error: 'Project not found' });
+      if (r.rows[0].owner_user_id !== null && r.rows[0].owner_user_id !== req.userId) {
+        return res.status(403).json({ error: 'Not authorized for this project' });
+      }
+      next();
+    })
+    .catch((e) => { console.error(e); res.status(500).json({ error: e.message }); });
+});
+
 // ---------------- Application (Application-Data section) ----------------
+// Scoped to the requesting project's own application_id (set at project
+// creation, see POST /projects) so each project shows its own Application
+// Details instead of always falling back to whichever application row was
+// created first. ?project_id is optional only for backwards compatibility;
+// every current caller (ProjectDataContext) always sends it.
 router.get('/application', wrap(async (req, res) => {
+  const pid = req.query.project_id;
+  if (pid && /^\d+$/.test(String(pid))) {
+    const p = await db.query('SELECT application_id FROM projects WHERE id=$1', [pid]);
+    if (p.rows[0]?.application_id) {
+      const r = await db.query('SELECT * FROM applications WHERE id=$1', [p.rows[0].application_id]);
+      return res.json(r.rows[0] || null);
+    }
+  }
   const r = await db.query('SELECT * FROM applications ORDER BY id LIMIT 1');
   res.json(r.rows[0] || null);
 }));
@@ -79,14 +112,12 @@ router.delete('/resources/:id', wrap(async (req, res) => {
 
 // ---------------- Projects (Project-Data section) ----------------
 router.get('/projects', wrap(async (req, res) => {
-  const r = await db.query('SELECT * FROM projects ORDER BY id');
+  const r = await db.query('SELECT * FROM projects WHERE owner_user_id=$1 ORDER BY id', [req.userId]);
   res.json(r.rows);
 }));
 
 router.post('/projects', wrap(async (req, res) => {
   const f = req.body || {};
-  const app = await db.query('SELECT id FROM applications ORDER BY id LIMIT 1');
-  const applicationId = f.application_id || app.rows[0]?.id || null;
   const phaseDefaults = [
     ['Analysis', 8], ['Design', 11], ['Design Review', 3], ['Coding', 20],
     ['Code Review', 4], ['Unit Testing', 6], ['System Testing', 24],
@@ -100,13 +131,25 @@ router.post('/projects', wrap(async (req, res) => {
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Every new project gets its own blank Application Details row rather
+    // than reusing/inheriting whichever application was created first (e.g.
+    // the seeded sample data) - Application-Data should start empty for a
+    // fresh project, not pre-filled with someone else's example.
+    let applicationId = f.application_id || null;
+    if (!applicationId) {
+      const appRow = await client.query('INSERT INTO applications (app_name) VALUES ($1) RETURNING id', ['']);
+      applicationId = appRow.rows[0].id;
+    }
+
     const r = await client.query(
-      `INSERT INTO projects (application_id, project_key, fp_count, productivity_factor, project_type,
+      `INSERT INTO projects (owner_user_id, application_id, project_key, fp_count, productivity_factor, project_type,
          technology, brief_desc, scope, start_date, software_req, hardware_req, quality_objective,
          life_cycle, shared_folder_path, other_info, avg_daily_res_pct, doc_owner_ipn, naming_convention)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [
+        req.userId,
         applicationId,
         f.project_key || `NEW PROJECT ${Date.now().toString().slice(-5)}`,
         f.fp_count || 0,
@@ -329,6 +372,81 @@ const collections = {
   agenda: { table: 'kickoff_agenda', cols: ['sno', 'topic'] },
   modules: { table: 'modules', cols: ['sno', 'name', 'description', 'dev_res', 'tl_res', 'testers'] }
 };
+
+// ---------------- SRS (requirements document) upload + AI extraction ----------------
+// Must stay registered before the generic /projects/:id/:coll route below,
+// otherwise Express matches that catch-all first and this never runs.
+router.post('/projects/:id/srs', upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const name = req.file.originalname || 'srs.txt';
+  const ext = (name.split('.').pop() || '').toLowerCase();
+
+  let text;
+  if (ext === 'pdf') {
+    text = (await pdfParse(req.file.buffer)).text;
+  } else {
+    text = req.file.buffer.toString('utf8');
+  }
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Could not read any text from the uploaded file (supported: .txt, .md, .pdf)' });
+
+  const document = (await db.query(
+    'INSERT INTO srs_documents (project_id, filename, raw_text) VALUES ($1,$2,$3) RETURNING id, filename, uploaded_at',
+    [req.params.id, name, text]
+  )).rows[0];
+
+  let extracted;
+  try {
+    extracted = await extractFromSrs(text);
+  } catch (e) {
+    return res.json({ document, extracted: false, error: e.message });
+  }
+
+  const p = extracted.project || {};
+  await db.query(
+    `UPDATE projects SET
+       brief_desc  = COALESCE(NULLIF($1,''), brief_desc),
+       scope       = COALESCE(NULLIF($2,''), scope),
+       technology  = COALESCE(NULLIF($3,''), technology),
+       software_req= COALESCE(NULLIF($4,''), software_req),
+       hardware_req= COALESCE(NULLIF($5,''), hardware_req),
+       life_cycle  = COALESCE(NULLIF($6,''), life_cycle)
+     WHERE id=$7`,
+    [p.brief_desc || '', p.scope || '', p.technology || '', p.software_req || '', p.hardware_req || '', p.life_cycle || '', req.params.id]
+  );
+
+  const a = extracted.analysis || {};
+  await db.query(
+    `INSERT INTO srs_analysis (project_id, business_requirements, functional_requirements, non_functional_requirements, use_cases, data_entities, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,now())
+     ON CONFLICT (project_id) DO UPDATE SET
+       business_requirements=$2, functional_requirements=$3, non_functional_requirements=$4,
+       use_cases=$5, data_entities=$6, updated_at=now()`,
+    [req.params.id, JSON.stringify(a.business_requirements || []), JSON.stringify(a.functional_requirements || []),
+      JSON.stringify(a.non_functional_requirements || []), JSON.stringify(a.use_cases || []), JSON.stringify(a.data_entities || [])]
+  );
+
+  const d = extracted.design || {};
+  await db.query(
+    `INSERT INTO srs_design (project_id, architecture_overview, components, api_endpoints, db_design, sequence_flows, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,now())
+     ON CONFLICT (project_id) DO UPDATE SET
+       architecture_overview=$2, components=$3, api_endpoints=$4, db_design=$5, sequence_flows=$6, updated_at=now()`,
+    [req.params.id, d.architecture_overview || '', JSON.stringify(d.components || []), JSON.stringify(d.api_endpoints || []),
+      JSON.stringify(d.db_design || []), JSON.stringify(d.sequence_flows || [])]
+  );
+
+  const project = (await db.query('SELECT * FROM projects WHERE id=$1', [req.params.id])).rows[0];
+  res.json({ document, extracted: true, project, analysis: a, design: d });
+}));
+
+router.get('/projects/:id/srs', wrap(async (req, res) => {
+  const [document] = (await db.query(
+    'SELECT id, filename, uploaded_at FROM srs_documents WHERE project_id=$1 ORDER BY id DESC LIMIT 1', [req.params.id]
+  )).rows;
+  const [analysis] = (await db.query('SELECT * FROM srs_analysis WHERE project_id=$1', [req.params.id])).rows;
+  const [design] = (await db.query('SELECT * FROM srs_design WHERE project_id=$1', [req.params.id])).rows;
+  res.json({ document: document || null, analysis: analysis || null, design: design || null });
+}));
 
 router.get('/projects/:id/:coll', wrap(async (req, res, next) => {
   const c = collections[req.params.coll];

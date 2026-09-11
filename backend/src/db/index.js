@@ -28,6 +28,46 @@ CREATE TABLE IF NOT EXISTS timesheet_entries (
     generated_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet_entries(project_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    id            SERIAL PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name          TEXT,
+    created_at    TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE TABLE IF NOT EXISTS srs_documents (
+    id           SERIAL PRIMARY KEY,
+    project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    filename     TEXT,
+    raw_text     TEXT,
+    uploaded_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_srs_documents_project ON srs_documents(project_id);
+
+CREATE TABLE IF NOT EXISTS srs_analysis (
+    id                          SERIAL PRIMARY KEY,
+    project_id                  INTEGER NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    business_requirements       JSONB DEFAULT '[]',
+    functional_requirements     JSONB DEFAULT '[]',
+    non_functional_requirements JSONB DEFAULT '[]',
+    use_cases                   JSONB DEFAULT '[]',
+    data_entities                JSONB DEFAULT '[]',
+    updated_at                  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS srs_design (
+    id                    SERIAL PRIMARY KEY,
+    project_id            INTEGER NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    architecture_overview TEXT,
+    components            JSONB DEFAULT '[]',
+    api_endpoints         JSONB DEFAULT '[]',
+    db_design             JSONB DEFAULT '[]',
+    sequence_flows        JSONB DEFAULT '[]',
+    updated_at            TIMESTAMPTZ DEFAULT now()
+);
 `;
 pool.query(ENSURE_SQL).catch((e) => console.error('Schema ensure failed:', e.message));
 

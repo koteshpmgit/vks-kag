@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import API from '../../api/client.js';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useDialogs } from '../../components/common/Dialogs.jsx';
-import { GROUPS, SECTION_META, COLLECTION_COLS, PROJ_FIELDS_CREATE, LIST_KIND_MAP, SectionBody } from '../../data/sections.jsx';
+import { GROUPS, SECTION_META, COLLECTION_COLS, PROJ_FIELDS_CREATE, APP_FIELDS, LIST_KIND_MAP, SectionBody } from '../../data/sections.jsx';
 
 const MIN_ROWS = 2;
 const DRAFT_SECTIONS = new Set([
   ...Object.keys(COLLECTION_COLS), ...Object.keys(LIST_KIND_MAP)
 ]);
-const LIVE_SECTIONS = new Set(['appDetails', 'resources', 'stdRoles', 'stdTools', 'stdMatrix', 'stdFolders', 'stdTasks']);
+// Genuinely org-wide/shared data, same regardless of which project is being
+// created - safe to edit live against whatever's in context. Application
+// Details is NOT here: each project now gets its own blank application
+// record (see POST /projects), so it has to be collected as a draft and
+// saved against the project actually being created, not edited live.
+const LIVE_SECTIONS = new Set(['resources', 'stdRoles', 'stdTools', 'stdMatrix', 'stdFolders', 'stdTasks']);
 const PREVIEW_SECTIONS = new Set(['effort', 'milestones']);
 
 // Must match the phaseDefaults/milestoneDefaults seeded server-side in
@@ -32,14 +37,15 @@ function buildSteps() {
 }
 const STEPS = buildSteps();
 
-export default function Wizard({ onClose }) {
-  const { reloadProjects, switchProject } = useProjectData();
+export default function Wizard({ onClose, onCreated }) {
+  const { data, reloadProjects, switchProject } = useProjectData();
   const { toast, confirmDialog } = useDialogs();
   const [stepIdx, setStepIdx] = useState(0);
   const [visited, setVisited] = useState(new Set([0]));
   const [errors, setErrors] = useState([]);
   const [draft, setDraft] = useState(() => ({
     project: {},
+    application: {},
     lists: Object.fromEntries([...DRAFT_SECTIONS].map((k) => [k, []]))
   }));
 
@@ -94,6 +100,14 @@ export default function Wizard({ onClose }) {
     try {
       const p = await API.post('/projects', draft.project);
       const failures = [];
+      if (p.application_id && Object.keys(draft.application).length) {
+        // app_name is NOT NULL in the schema - fall back to the project key
+        // so a partially-filled Application Details step (e.g. just Domain)
+        // can't fail the save with a constraint violation.
+        const appBody = { app_name: draft.project.project_key || '', ...draft.application };
+        try { await API.put(`/application/${p.application_id}`, appBody); }
+        catch (e) { failures.push(`Application Details: ${e.message}`); }
+      }
       for (const [sid, rows] of Object.entries(draft.lists)) {
         for (const row of rows) {
           const { _localId, ...body } = row;
@@ -109,14 +123,15 @@ export default function Wizard({ onClose }) {
       await reloadProjects();
       await switchProject(p.id);
       toast(failures.length ? `Project created with ${failures.length} row(s) failed to save` : 'Project created');
-      onClose();
+      if (onCreated) onCreated(p);
+      else onClose();
     } catch (e) {
       toast('Failed to create project: ' + e.message, true);
     }
   };
 
   const requestClose = async () => {
-    const touched = draft.project.project_key || Object.values(draft.lists).some((r) => r.length);
+    const touched = draft.project.project_key || Object.keys(draft.application).length || Object.values(draft.lists).some((r) => r.length);
     if (touched) {
       const ans = await confirmDialog('Discard this new project draft?', { title: 'Close wizard', buttons: ['Discard', 'Keep editing'] });
       if (ans !== 'Discard') return;
@@ -171,6 +186,7 @@ export default function Wizard({ onClose }) {
               addDraftRow={addDraftRow}
               updateDraftRow={updateDraftRow}
               deleteDraftRow={deleteDraftRow}
+              hasData={!!data}
             />
           </div>
         </div>
@@ -186,7 +202,7 @@ export default function Wizard({ onClose }) {
   );
 }
 
-function StepBody({ step, draft, setDraft, addDraftRow, updateDraftRow, deleteDraftRow }) {
+function StepBody({ step, draft, setDraft, addDraftRow, updateDraftRow, deleteDraftRow, hasData }) {
   if (step.id === '__create__') {
     return (
       <div className="form-grid">
@@ -207,7 +223,54 @@ function StepBody({ step, draft, setDraft, addDraftRow, updateDraftRow, deleteDr
     );
   }
 
+  if (step.id === 'appDetails') {
+    return (
+      <div className="form-grid">
+        {APP_FIELDS.map(([key, label, type]) => (
+          <label key={key} className={type === 'multi' ? 'full editable-field' : 'editable-field'}>
+            <span>{label}</span>
+            {type === 'multi'
+              ? <textarea rows={3} value={draft.application[key] ?? ''} onChange={(e) => setDraft((d) => ({ ...d, application: { ...d.application, [key]: e.target.value } }))} />
+              : <input
+                  type="text"
+                  value={draft.application[key] ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, application: { ...d.application, [key]: e.target.value } }))}
+                />}
+          </label>
+        ))}
+      </div>
+    );
+  }
+
+  if (step.id === 'projSummary') {
+    // Not a list section - it's the same project record collected in
+    // "Create Project" plus computed values (effort, dates) that don't
+    // exist until the project is actually created. Falling through to the
+    // generic draft-list renderer below would show a broken "add row" UI
+    // with nothing backing it.
+    return (
+      <div className="wizard-tip">
+        <span className="wizard-tip-icon">&#8505;</span>
+        <div><b>Already collected</b><p>The core project details were captured in the Create Project step. The full summary - including computed effort and schedule - will be available once the project is created.</p></div>
+      </div>
+    );
+  }
+
   if (LIVE_SECTIONS.has(step.id)) {
+    // This shared reference data is fetched alongside a project's own data
+    // (see ProjectDataContext), so there's nothing to read/save it against
+    // yet on someone's very first-ever project (no project exists in
+    // context at all until this wizard finishes). Every later project
+    // creation has a prior active project in context, so this only shows
+    // up once per user.
+    if (!hasData) {
+      return (
+        <div className="wizard-tip">
+          <span className="wizard-tip-icon">&#8505;</span>
+          <div><b>Available after setup</b><p>{SECTION_META[step.id].title} is shared, org-wide data - you'll be able to fill it in from the Advanced editor once your first project is created.</p></div>
+        </div>
+      );
+    }
     return (
       <div>
         <div className="wizard-tip">

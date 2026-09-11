@@ -65,9 +65,10 @@ export default function Header({ page, onHome, onSummary, onOpenSection, onNewPr
         <div className="wa-menu-item" id="layoutSwitchWrap">
           <button className="icon-btn" title="Switch layout" onClick={() => setOpenMenu((m) => (m === 'layout' ? null : 'layout'))}>&#128421;</button>
           <div className={`wa-menu-dropdown${openMenu === 'layout' ? '' : ''}`} style={{ display: openMenu === 'layout' ? 'block' : undefined }}>
-            <a onClick={() => navigate('/')}>Modern UI</a>
+            <a onClick={() => navigate('/modern')}>Modern UI</a>
             <a onClick={() => navigate('/excel')}>Excel UI</a>
-            <a className="active" onClick={() => navigate('/webapp')}>Web App UI</a>
+            <a className="active" onClick={() => navigate('/classic')}>Web App UI</a>
+            <a onClick={() => navigate('/')}>Home</a>
           </div>
         </div>
         <button className="icon-btn" title="Show / hide menu" onClick={() => setSidebarHidden((v) => !v)}>&#9776;</button>

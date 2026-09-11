@@ -103,15 +103,15 @@ body.wa-sidebar-hidden #waSidebar { display: none; }
 body.wa-sidebar-hidden #waLayout { grid-template-columns: 1fr; }
 
 .wa-hero {
-  background: var(--cool-gradient); color: #fff; border-radius: 14px; padding: 26px 28px;
-  margin-bottom: 18px; box-shadow: var(--shadow);
+  background: var(--cool-gradient); color: #fff; border-radius: 12px; padding: 16px 20px;
+  margin-bottom: 14px; box-shadow: var(--shadow);
 }
-.wa-hero h2 { margin: 0 0 8px 0; font-size: 24px; }
-.wa-hero p { margin: 0 0 16px 0; color: #cbd5e1; font-size: 13px; max-width: 640px; }
-.wa-hero-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+.wa-hero h2 { margin: 0 0 4px 0; font-size: 19px; }
+.wa-hero p { margin: 0 0 10px 0; color: #cbd5e1; font-size: 12px; max-width: 640px; }
+.wa-hero-stats { display: flex; gap: 18px; flex-wrap: wrap; }
 .wa-hero-stats div { display: flex; flex-direction: column; }
-.wa-hero-stats b { font-size: 22px; }
-.wa-hero-stats span { font-size: 11px; color: #cbd5e1; text-transform: uppercase; letter-spacing: .4px; }
+.wa-hero-stats b { font-size: 17px; }
+.wa-hero-stats span { font-size: 10px; color: #cbd5e1; text-transform: uppercase; letter-spacing: .4px; }
 
 .wa-home-section { margin-bottom: 22px; }
 .wa-home-section-title {
@@ -216,6 +216,16 @@ body.wa-sidebar-hidden #waLayout { grid-template-columns: 1fr; }
   .artifact-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .artifact-card { padding: 10px; }
 
+  .wa-hero {
+    padding: clamp(10px, 1.1vw, 14px) clamp(14px, 1.4vw, 18px);
+    margin-bottom: clamp(8px, .8vw, 12px); border-radius: 10px;
+  }
+  .wa-hero h2 { font-size: clamp(14px, 1.15vw, 17px); margin-bottom: 3px; }
+  .wa-hero p { font-size: clamp(9.5px, .72vw, 11px); margin-bottom: 6px; }
+  .wa-hero-stats { gap: clamp(10px, 1.2vw, 16px); }
+  .wa-hero-stats b { font-size: clamp(13px, 1.1vw, 15px); }
+  .wa-hero-stats span { font-size: 9px; }
+
   body.wa-home-page #contentHead { margin-bottom: 7px; }
   body.wa-home-page .wa-home-section { margin-bottom: 10px; }
   body.wa-home-page .wa-home-section-title {
@@ -241,7 +251,7 @@ body.wa-sidebar-hidden #waLayout { grid-template-columns: 1fr; }
   body.wa-home-page .wa-summary-panel .progress-track { height: 5px; }
   body.wa-home-page .wa-summary-panel .srow { padding: 3px 7px; font-size: 10px; }
   body.wa-home-page .wa-home-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(6px, .7vw, 10px);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: clamp(6px, .7vw, 10px);
   }
   body.wa-home-page .wa-home-card {
     padding: clamp(7px, .75vw, 11px); border-top-width: 3px;
@@ -368,6 +378,74 @@ body.bg-is-dark .tbl td.readonly-cell,
 body.bg-is-dark .readonly-table td { color: var(--background-fg); border-color: rgba(226,232,240,.42); }
 body.bg-is-light .tbl th,
 body.bg-is-light .tbl td { color: #0f172a; border-color: rgba(51,65,85,.38); }
+
+/* Auto text-contrast for the translucent "glass" cards (see the shared
+   background rule below) — re-tints both the card and its text together so
+   whichever background the user picks, the card content stays readable.
+   .nav-group is deliberately excluded from the `color` half: its .nav-head
+   sits on its own opaque panel-gradient (unaffected by the page background)
+   and must keep its normal dark text; only its `background` (which shows
+   through behind the .nav-items links once expanded) needs re-tinting. */
+body.bg-is-light .nav-group,
+body.bg-is-light .summary-card,
+body.bg-is-light .artifact-card,
+body.bg-is-light .modal,
+body.bg-is-light .wa-home-card,
+body.bg-is-light .wa-home-link:not(.active),
+body.bg-is-light .wa-welcome,
+body.bg-is-light .dash-widget {
+  background: rgba(255,255,255,.62);
+}
+body.bg-is-dark .nav-group,
+body.bg-is-dark .summary-card,
+body.bg-is-dark .artifact-card,
+body.bg-is-dark .modal,
+body.bg-is-dark .wa-home-card,
+body.bg-is-dark .wa-home-link:not(.active),
+body.bg-is-dark .wa-welcome,
+body.bg-is-dark .dash-widget {
+  background: rgba(15,23,42,.62);
+}
+body.bg-is-light .summary-card,
+body.bg-is-light .artifact-card,
+body.bg-is-light .modal,
+body.bg-is-light .wa-home-card,
+body.bg-is-light .wa-home-link:not(.active),
+body.bg-is-light .wa-welcome,
+body.bg-is-light .dash-widget,
+body.bg-is-dark .summary-card,
+body.bg-is-dark .artifact-card,
+body.bg-is-dark .modal,
+body.bg-is-dark .wa-home-card,
+body.bg-is-dark .wa-home-link:not(.active),
+body.bg-is-dark .wa-welcome,
+body.bg-is-dark .dash-widget {
+  color: var(--background-fg);
+}
+body.bg-is-dark .summary-card,
+body.bg-is-dark .artifact-card,
+body.bg-is-dark .modal,
+body.bg-is-dark .wa-home-card,
+body.bg-is-dark .wa-home-link:not(.active),
+body.bg-is-dark .wa-welcome,
+body.bg-is-dark .dash-widget {
+  text-shadow: 0 1px 2px rgba(0,0,0,.55);
+}
+body.bg-is-light .wa-home-card p, body.bg-is-dark .wa-home-card p,
+body.bg-is-light .wa-home-card small, body.bg-is-dark .wa-home-card small,
+body.bg-is-light .artifact-card p, body.bg-is-dark .artifact-card p,
+body.bg-is-light .wa-welcome p, body.bg-is-dark .wa-welcome p,
+body.bg-is-light .dash-widget span, body.bg-is-dark .dash-widget span,
+body.bg-is-light .dash-widget small, body.bg-is-dark .dash-widget small,
+body.bg-is-light .summary-card .srow span, body.bg-is-dark .summary-card .srow span {
+  color: var(--background-muted);
+}
+body.bg-is-light .wa-welcome h3, body.bg-is-dark .wa-welcome h3,
+body.bg-is-light .wa-welcome h3 span, body.bg-is-dark .wa-welcome h3 span,
+body.bg-is-light .summary-card h3, body.bg-is-dark .summary-card h3,
+body.bg-is-light .nav-items a:not(.active), body.bg-is-dark .nav-items a:not(.active) {
+  color: var(--background-fg);
+}
 
 body.wa-compact { font-size: 13px; }
 body.wa-compact .tbl th, body.wa-compact .tbl td { padding: 5px 8px; }

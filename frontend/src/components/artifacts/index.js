@@ -8,9 +8,13 @@ import IPPConfig from './IPPConfig.jsx';
 import IPPProcess from './IPPProcess.jsx';
 import WBSForJira from './WBSForJira.jsx';
 import FolderStructure from './FolderStructure.jsx';
+import AnalysisDocument from './AnalysisDocument.jsx';
+import DesignDocument from './DesignDocument.jsx';
 
 // id -> {name, Component} - order matches the workbook's sheet tab order
 export const ARTIFACTS = [
+  { id: 'analysisdocument', name: 'Analysis Document', Component: AnalysisDocument },
+  { id: 'designdocument', name: 'Design Document', Component: DesignDocument },
   { id: 'kickoff', name: 'Kick-Off', Component: KickOff },
   { id: 'ain', name: 'AIN', Component: AIN },
   { id: 'ainproject', name: 'AIN-Project', Component: AINProject },

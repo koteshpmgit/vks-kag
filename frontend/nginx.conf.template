@@ -27,6 +27,26 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # The 'backend' compose service name occasionally has a transient
+        # lookup failure against Docker's embedded DNS (127.0.0.11) - since
+        # the fallback resolver above (8.8.8.8) can never know that internal
+        # name either, such a blip becomes a hard 502 instead of just
+        # clearing up. Retry once against a fresh resolution before giving
+        # the client an error.
+        proxy_intercept_errors on;
+        error_page 502 504 = @api_retry;
+    }
+
+    location @api_retry {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        proxy_pass $backend_origin;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     # SPA fallback so client-side routes (/, /excel, /webapp) work on a hard reload.

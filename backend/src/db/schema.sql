@@ -1,6 +1,9 @@
 -- Key Artifact Generator - PostgreSQL schema
 -- Mirrors the data model of "Key Artifact Generator-V1.0.xls" (Data Sheet columns B..CM)
 
+DROP TABLE IF EXISTS srs_design CASCADE;
+DROP TABLE IF EXISTS srs_analysis CASCADE;
+DROP TABLE IF EXISTS srs_documents CASCADE;
 DROP TABLE IF EXISTS wbs_tasks CASCADE;
 DROP TABLE IF EXISTS task_templates CASCADE;
 DROP TABLE IF EXISTS stakeholder_matrix CASCADE;
@@ -24,6 +27,16 @@ DROP TABLE IF EXISTS std_tools CASCADE;
 DROP TABLE IF EXISTS resources CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 DROP TABLE IF EXISTS applications CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- ============ Users (login) ============
+CREATE TABLE users (
+    id            SERIAL PRIMARY KEY,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name          TEXT,
+    created_at    TIMESTAMPTZ DEFAULT now()
+);
 
 -- ============ Application-Data section (Data Sheet cols B..O) ============
 CREATE TABLE applications (
@@ -62,6 +75,7 @@ CREATE TABLE resources (
 -- ============ Project-Data section (Data Sheet cols R..AE) ============
 CREATE TABLE projects (
     id                  SERIAL PRIMARY KEY,
+    owner_user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
     application_id      INTEGER REFERENCES applications(id) ON DELETE SET NULL,
     project_key         TEXT NOT NULL,              -- ProjectName    S5
     fp_count            NUMERIC DEFAULT 0,          -- ProjectFpSize  T5
@@ -318,7 +332,42 @@ CREATE TABLE IF NOT EXISTS timesheet_entries (
     generated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- ============ SRS (requirements document) upload + AI extraction ============
+-- Raw uploaded document, kept for reference/re-extraction.
+CREATE TABLE srs_documents (
+    id           SERIAL PRIMARY KEY,
+    project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    filename     TEXT,
+    raw_text     TEXT,
+    uploaded_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- AI-extracted Analysis artifact content (one row per project).
+CREATE TABLE srs_analysis (
+    id                         SERIAL PRIMARY KEY,
+    project_id                 INTEGER NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    business_requirements      JSONB DEFAULT '[]',   -- [{description, priority}]
+    functional_requirements    JSONB DEFAULT '[]',   -- [{req_id, description, priority}]
+    non_functional_requirements JSONB DEFAULT '[]',  -- [{category, requirement}]
+    use_cases                  JSONB DEFAULT '[]',   -- [{name, actor, description, preconditions, postconditions}]
+    data_entities               JSONB DEFAULT '[]',  -- [{name, attributes, description}]
+    updated_at                 TIMESTAMPTZ DEFAULT now()
+);
+
+-- AI-extracted Design artifact content (one row per project).
+CREATE TABLE srs_design (
+    id                    SERIAL PRIMARY KEY,
+    project_id            INTEGER NOT NULL UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    architecture_overview TEXT,
+    components            JSONB DEFAULT '[]',        -- [{name, responsibility, technology}]
+    api_endpoints         JSONB DEFAULT '[]',        -- [{method, path, description}]
+    db_design             JSONB DEFAULT '[]',        -- [{entity, fields, relationships}]
+    sequence_flows        JSONB DEFAULT '[]',        -- [{name, steps}]
+    updated_at            TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE INDEX idx_hr_plan_project ON hr_plan(project_id);
 CREATE INDEX idx_milestones_project ON milestones(project_id);
 CREATE INDEX idx_wbs_project ON wbs_tasks(project_id);
 CREATE INDEX idx_timesheet_project ON timesheet_entries(project_id);
+CREATE INDEX idx_srs_documents_project ON srs_documents(project_id);

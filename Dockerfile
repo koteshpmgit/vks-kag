@@ -7,10 +7,10 @@ WORKDIR /app
 # Copy source INCLUDING the host-installed backend/node_modules.
 # On this machine HTTPS to registry.npmjs.org is TLS-intercepted inside the
 # Docker VM (certificate verify fails), so npm cannot download packages during
-# the build. All dependencies (express, pg, cors, dotenv, pdfkit) are pure
-# JavaScript, so the host's node_modules tree is fully portable into the
-# Linux container. Prerequisite: run "npm install" in ./backend on the host
-# before building.
+# the build. All dependencies (express, pg, cors, dotenv, pdfkit, bcryptjs,
+# jsonwebtoken, multer, pdf-parse) are pure JavaScript, so the host's
+# node_modules tree is fully portable into the Linux container. Prerequisite:
+# run "npm install" in ./backend on the host before building.
 COPY backend ./backend
 
 # If node_modules did not come with the copy, fall back to npm ci with
@@ -22,7 +22,9 @@ COPY backend ./backend
 # otherwise pass this check and only surface as a crash on first PDF export).
 RUN cd backend \
     && DEPS_CHECK="require.resolve('express'); require.resolve('pg'); \
-require.resolve('cors'); require.resolve('dotenv'); require.resolve('pdfkit')" \
+require.resolve('cors'); require.resolve('dotenv'); require.resolve('pdfkit'); \
+require.resolve('bcryptjs'); require.resolve('jsonwebtoken'); \
+require.resolve('multer'); require.resolve('pdf-parse')" \
     && if ! node -e "require.resolve('express')" 2>/dev/null; then \
         npm config set strict-ssl false; \
         npm config set fetch-retries 5; \

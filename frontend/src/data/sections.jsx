@@ -78,7 +78,7 @@ export const COLLECTION_COLS = {
   ]
 };
 
-const APP_FIELDS = [
+export const APP_FIELDS = [
   ['app_name', 'Application Name'], ['irn_no', 'IRN No'], ['app_size_fp', 'Application Size in FP'],
   ['front_office', 'Front Office'], ['domain', 'Domain'], ['category', 'Category'],
   ['description', 'Application Description', 'multi'], ['acceptance_criteria', 'Acceptance Criteria', 'multi'],

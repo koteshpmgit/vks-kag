@@ -42,10 +42,11 @@ export default function Header({ onNewProject, onGenerateWbs, onOpenSection }) {
         <button className="icon-btn" title="Generate WBS (for JIRA upload)" onClick={onGenerateWbs}>&#128736;</button>
         <label className="hdr-field layout-switch">
           <span>Layout</span>
-          <select value="/" onChange={(e) => navigate(e.target.value)}>
-            <option value="/">Modern UI</option>
+          <select value="/modern" onChange={(e) => navigate(e.target.value)}>
+            <option value="/modern">Modern UI</option>
             <option value="/excel">Excel UI</option>
-            <option value="/webapp">Web App UI</option>
+            <option value="/classic">Web App UI</option>
+            <option value="/">Home</option>
           </select>
         </label>
       </div>

@@ -11,7 +11,7 @@ async function loadAll(pid) {
   const [application] = project.application_id
     ? await q('SELECT * FROM applications WHERE id=$1', [project.application_id])
     : await q('SELECT * FROM applications ORDER BY id LIMIT 1', []);
-  const [phases, hr, hardware, software, lists, docs, goals, training, process, envs, agenda, modules, stdRoles, stdTools, matrix, folders, wbs] =
+  const [phases, hr, hardware, software, lists, docs, goals, training, process, envs, agenda, modules, stdRoles, stdTools, matrix, folders, wbs, analysisRes, designRes] =
     await Promise.all([
       q('SELECT * FROM phase_efforts WHERE project_id=$1 ORDER BY seq'),
       q('SELECT * FROM hr_plan WHERE project_id=$1 ORDER BY sno'),
@@ -29,10 +29,17 @@ async function loadAll(pid) {
       q('SELECT * FROM std_tools ORDER BY sno', []),
       q('SELECT * FROM stakeholder_matrix ORDER BY id', []),
       q('SELECT * FROM folder_structure ORDER BY id', []),
-      q('SELECT * FROM wbs_tasks WHERE project_id=$1 ORDER BY id')
+      q('SELECT * FROM wbs_tasks WHERE project_id=$1 ORDER BY id'),
+      q('SELECT * FROM srs_analysis WHERE project_id=$1'),
+      q('SELECT * FROM srs_design WHERE project_id=$1')
     ]);
   const calc = computeProject(project, phases, hr);
-  return { project, application, phases, hr, hardware, software, lists, docs, goals, training, process, envs, agenda, modules, stdRoles, stdTools, matrix, folders, wbs, calc };
+  return {
+    project, application, phases, hr, hardware, software, lists, docs, goals, training, process, envs, agenda, modules,
+    stdRoles, stdTools, matrix, folders, wbs, calc,
+    analysis: analysisRes[0] || null,
+    design: designRes[0] || null
+  };
 }
 
 const T = (v) => ({ v, title: true, colspan: 6 });
@@ -348,6 +355,71 @@ function dataSheetRows(d) {
   return rows;
 }
 
+function analysisRows(d) {
+  const { project, analysis: a } = d;
+  const rows = [];
+  rows.push([T(`Analysis Document – ${project.project_key}`)]);
+  if (!a) rows.push(['No SRS document has been uploaded/extracted for this project yet.']);
+
+  rows.push([B('Business Requirements')]);
+  rows.push([H('S.No'), H('Description'), H('Priority')]);
+  (a?.business_requirements || []).forEach((r, i) => rows.push([i + 1, r.description, r.priority || '']));
+  rows.push([]);
+
+  rows.push([B('Functional Requirements')]);
+  rows.push([H('Req ID'), H('Description'), H('Priority')]);
+  (a?.functional_requirements || []).forEach((r) => rows.push([r.req_id || '', r.description, r.priority || '']));
+  rows.push([]);
+
+  rows.push([B('Non-Functional Requirements')]);
+  rows.push([H('Category'), H('Requirement')]);
+  (a?.non_functional_requirements || []).forEach((r) => rows.push([r.category, r.requirement]));
+  rows.push([]);
+
+  rows.push([B('Use Cases')]);
+  rows.push([H('Name'), H('Actor'), H('Description'), H('Preconditions'), H('Postconditions')]);
+  (a?.use_cases || []).forEach((u) => rows.push([u.name, u.actor || '', u.description || '', u.preconditions || '', u.postconditions || '']));
+  rows.push([]);
+
+  rows.push([B('Data Entities')]);
+  rows.push([H('Name'), H('Attributes'), H('Description')]);
+  (a?.data_entities || []).forEach((e) => rows.push([e.name, e.attributes || '', e.description || '']));
+
+  return rows;
+}
+
+function designRows(d) {
+  const { project, design: g } = d;
+  const rows = [];
+  rows.push([T(`Design Document – ${project.project_key}`)]);
+  if (!g) rows.push(['No SRS document has been uploaded/extracted for this project yet.']);
+
+  rows.push([B('Architecture Overview')]);
+  rows.push([g?.architecture_overview || '']);
+  rows.push([]);
+
+  rows.push([B('Components')]);
+  rows.push([H('Name'), H('Responsibility'), H('Technology')]);
+  (g?.components || []).forEach((c) => rows.push([c.name, c.responsibility || '', c.technology || '']));
+  rows.push([]);
+
+  rows.push([B('API Endpoints')]);
+  rows.push([H('Method'), H('Path'), H('Description')]);
+  (g?.api_endpoints || []).forEach((e) => rows.push([e.method, e.path, e.description || '']));
+  rows.push([]);
+
+  rows.push([B('Database Design')]);
+  rows.push([H('Entity'), H('Fields'), H('Relationships')]);
+  (g?.db_design || []).forEach((e) => rows.push([e.entity, e.fields || '', e.relationships || '']));
+  rows.push([]);
+
+  rows.push([B('Sequence Flows')]);
+  rows.push([H('Name'), H('Steps')]);
+  (g?.sequence_flows || []).forEach((s) => rows.push([s.name, s.steps || '']));
+
+  return rows;
+}
+
 async function buildArtifactRows(projectId, artifact) {
   const d = await loadAll(projectId);
   // map milestone name -> deliverable (from stored milestones table)
@@ -366,7 +438,9 @@ async function buildArtifactRows(projectId, artifact) {
     'IPP-Configuration Mgmt.': ippConfigRows,
     'IPP-Process Planning': ippProcessRows,
     'WBS For JIRA': wbsRows,
-    'Folder Structure': folderRows
+    'Folder Structure': folderRows,
+    'Analysis Document': analysisRows,
+    'Design Document': designRows
   };
   const build = builders[artifact];
   if (!build) throw new Error(`Unknown artifact: ${artifact}`);

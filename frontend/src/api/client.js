@@ -1,19 +1,44 @@
 // Thin API client - same contract as the old js/api.js
+let authToken = localStorage.getItem('kag_token') || null;
+
+async function readError(r, fallback) {
+  try {
+    const body = await r.json();
+    return body?.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const API = {
   base: '/api',
 
+  setToken(token) {
+    authToken = token;
+    if (token) localStorage.setItem('kag_token', token);
+    else localStorage.removeItem('kag_token');
+  },
+  authHeaders() {
+    return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  },
+
   async get(path) {
-    const r = await fetch(this.base + path);
-    if (!r.ok) throw new Error(`GET ${path}: ${r.status}`);
+    const r = await fetch(this.base + path, { headers: this.authHeaders() });
+    if (!r.ok) throw new Error(await readError(r, `GET ${path}: ${r.status}`));
     return r.json();
   },
   async send(method, path, body) {
     const r = await fetch(this.base + path, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this.authHeaders() },
       body: body === undefined ? undefined : JSON.stringify(body)
     });
-    if (!r.ok) throw new Error(`${method} ${path}: ${r.status}`);
+    if (!r.ok) throw new Error(await readError(r, `${method} ${path}: ${r.status}`));
+    return r.json();
+  },
+  async upload(path, formData) {
+    const r = await fetch(this.base + path, { method: 'POST', headers: this.authHeaders(), body: formData });
+    if (!r.ok) throw new Error(await readError(r, `POST ${path}: ${r.status}`));
     return r.json();
   },
   post(path, body) { return this.send('POST', path, body); },

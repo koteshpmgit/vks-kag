@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Artifact Generator — Interactive Demo</title>
+<meta name="description" content="Self-running, self-explorable interactive tour of the Key Artifact Generator web app.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%235b8cff%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 font-family=%22Arial%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22>KA</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="tb-brand">
+        <span class="tb-logo">KA</span>
+        <div class="tb-titles">
+          <strong>Key Artifact Generator</strong>
+          <small>Interactive Demo</small>
+        </div>
+      </div>
+
+      <div class="tb-progress">
+        <div class="tb-progress-track"><span id="tbProgressFill"></span></div>
+        <small id="tbProgressLabel">Step 1 of 13</small>
+      </div>
+
+      <div class="tb-controls">
+        <div class="mode-switch" role="tablist" aria-label="Demo mode">
+          <button type="button" class="mode-btn active" data-mode="autorun" id="modeAutorunBtn" role="tab" aria-selected="true">▶ Autorun</button>
+          <button type="button" class="mode-btn" data-mode="explore" id="modeExploreBtn" role="tab" aria-selected="false">🖱 Explore</button>
+        </div>
+        <div class="tb-transport">
+          <button type="button" class="icon-btn" id="btnPrev" title="Previous chapter (←)">⏮</button>
+          <button type="button" class="icon-btn primary" id="btnPlayPause" title="Play / Pause (Space)">⏸</button>
+          <button type="button" class="icon-btn" id="btnNext" title="Next chapter (→)">⏭</button>
+          <select id="speedSelect" title="Playback speed">
+            <option value="0.75">0.75×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+          <button type="button" class="icon-btn" id="btnRestart" title="Restart demo">↺</button>
+          <button type="button" class="icon-btn" id="btnTheme" title="Toggle light / dark">🌙</button>
+        </div>
+      </div>
+    </header>
+
+    <div id="shell">
+      <nav id="rail" aria-label="Chapters"></nav>
+
+      <main id="stageWrap">
+        <div id="stage" tabindex="-1"></div>
+        <div id="captionBar">
+          <span id="captionBadge">GUIDE</span>
+          <p id="captionText">Welcome! Press Play to start the guided tour, or pick any chapter on the left.</p>
+          <button type="button" id="btnRunStep" class="btn-run-step" hidden>▶ Play this step</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="toastHost" aria-live="polite"></div>
+
+  <script src="scenes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
