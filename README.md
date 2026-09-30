@@ -16,19 +16,25 @@ Analysis/Design documents.
 
 - **Login / Sign-up** — email + password accounts (bcrypt-hashed, JWT sessions valid for 30 days).
   Each project belongs to the user who created it; other users get `403`.
-- **Onboarding flow** (`/`) — the first screen after login is **Upload Requirements
-  Document**: uploading an SRS creates a new project and fills it in, then you review what
-  was extracted and land on the project's **Analysis & Design** documents. The same screen
-  lists existing projects, and "Create manually instead" opens the step-by-step wizard.
-  From Review, **Open New Project Wizard** opens the wizard on the new project, pre-filled
-  with everything found in the SRS (application details, hardware, software, environments,
-  documents, constraints, dependencies, assumptions, risks, training, modules, goals);
-  saving updates that project in place.
-- **SRS upload + AI extraction** — upload a `.pdf`, `.txt` or `.md` requirements document;
-  Claude extracts project details, business/functional/non-functional requirements,
-  use cases, data entities, architecture, components, API endpoints, DB design and
-  sequence flows. Without `ANTHROPIC_API_KEY` the upload still works and the user can
-  skip extraction and continue manually.
+- **SRS-first onboarding** (`/`) — see [SRS upload flow](#srs-upload-flow) below:
+  1. **Upload Requirements Document** is the first screen after login. Uploading an SRS
+     creates the project (Project Key defaults to the file name). The same screen lists
+     existing projects, and **Create manually instead** opens a blank wizard.
+  2. **Review** summarises what Claude extracted.
+  3. **Open New Project Wizard** opens the step-by-step wizard on that project, pre-filled
+     from the SRS; **Save Project** updates the same project in place.
+  4. **Analysis & Design** — the project's home, with the Analysis and Design documents and
+     every other artifact.
+- **SRS upload + AI extraction** — upload a `.pdf`, `.txt` or `.md` requirements document
+  (up to 10 MB). Claude extracts:
+  - project details (description, scope, technology, FP estimate, quality objective);
+  - the **Analysis Document**: business/functional/non-functional requirements, use cases,
+    data entities;
+  - the **Design Document**: architecture, components, API endpoints, DB design, sequence flows;
+  - **wizard data**: application details, hardware, software, environments, documents,
+    constraints, dependencies, assumptions, risks, training, modules and goals.
+
+  Without `ANTHROPIC_API_KEY` the upload still works and the user can continue manually.
 - **Multiple layouts** over the same data:
 
   | Route | Layout |
@@ -43,8 +49,32 @@ Analysis/Design documents.
   Structure, Analysis Document, Design Document.
 - **Export** — every artifact downloads as `.xls` (default), `.csv`, `.html`, `.doc` or `.pdf`.
 - **WBS & Timesheet** — generate, edit and export the JIRA WBS and a per-resource timesheet.
-- **Interactive demo** — a self-running product tour in [demo/](demo/) (open `demo/index.html`
-  in a browser; no backend needed).
+- **Interactive demo** — a self-running, 12-chapter product tour in [demo/](demo/) (open
+  `demo/index.html` in a browser; no backend needed). It walks through the SRS-first flow
+  (upload → review → pre-filled wizard), then the Data Sheet, effort calculation, WBS,
+  artifacts, export and layouts. Switch to **Explore** to click through it yourself.
+
+## SRS upload flow
+
+```
+Login ─▶ Upload Requirements Document ─▶ Review ─▶ Open New Project Wizard ─▶ Analysis & Design
+          (creates the project)            │        (pre-filled, saves in place)        ▲
+                                           └──────── Continue to Analysis & Design ─────┘
+```
+
+- **What's saved at upload:** `POST /api/srs` reads the file first and only creates the
+  project if text could be extracted, so an unreadable file leaves nothing behind. The text
+  is stored in `srs_documents`; Claude's results go into the project, `srs_analysis`,
+  `srs_design`, the application record and the project's list tables (hardware, software,
+  risks, modules, …).
+- **Nothing you entered is overwritten:** text fields are only filled when blank, and a list
+  section only when it has no rows yet. Re-uploading an SRS to the same project is safe.
+- **What the SRS can't provide:** the start date and organisational data (HR plan, process
+  planning, decision analysis, kick-off agenda). The wizard's "at least 2 rows per list
+  step" rule still applies to those steps.
+- **Timing:** extraction usually takes 30–90 seconds. Nginx waits up to 5 minutes for it.
+- **If extraction fails** (for example a temporary Anthropic API error), the project is
+  already created: **Try Again** retries on the same project, or **Continue without AI**.
 
 ## What was replicated from the workbook
 
@@ -78,7 +108,7 @@ vks-kag/
 │   └── src/
 │       ├── db/
 │       │   ├── index.js          # pg pool + idempotent "ensure" of newer tables
-│       │   ├── setup.js          # creates DB, applies schema + seed (DESTRUCTIVE)
+│       │   ├── setup.js          # creates DB, applies schema + seed (refuses if real data exists)
 │       │   ├── schema.sql        # PostgreSQL schema
 │       │   ├── seed.sql          # sample data from the workbook (GICPI V1110)
 │       │   ├── migrate-add-users-srs.js  # non-destructive migration for existing DBs
@@ -104,7 +134,7 @@ vks-kag/
 │       ├── api/client.js         # fetch client (Bearer token from localStorage)
 │       ├── context/              # Auth, ProjectData, Theme
 │       ├── pages/                # Login, Signup
-│       ├── layouts/              # Onboarding, WebApp, Modern, Excel
+│       ├── layouts/              # Onboarding (SRS-first flow), WebApp (incl. Wizard), Modern, Excel
 │       ├── components/           # artifacts/ + common/
 │       ├── data/                 # section definitions, completion logic
 │       └── styles/
@@ -244,7 +274,13 @@ npm run build                 # production build into frontend/dist
 | `ANTHROPIC_API_KEY` | _(unset)_ | Enables SRS AI extraction |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5` | Model used for SRS extraction |
 
-Frontend container: `BACKEND_ORIGIN` (default `http://backend:3001`), `PORT` (default `80`).
+Frontend container:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `BACKEND_ORIGIN` | `http://backend:3001` | Where Nginx proxies `/api` |
+| `PORT` | `80` | Nginx listen port |
+| `NGINX_RESOLVER` | `127.0.0.11 8.8.8.8` | DNS servers for resolving `BACKEND_ORIGIN`. Compose sets `127.0.0.11` (Docker DNS only): with `8.8.8.8` listed too, Nginx alternates between them and lookups of `backend` fail intermittently. |
 
 ## Upgrading an existing database
 
@@ -265,15 +301,18 @@ GRANT_TO=<app_role> PGHOST=... PGUSER=postgres PGPASSWORD=... node src/db/grant-
 ## Using the app
 
 1. **Sign up** at `/signup` (or log in at `/login`).
-2. **Upload the SRS** (`.pdf` / `.txt` / `.md`) on the first screen. This creates the project
-   (Project Key defaults to the file name) and review what was extracted. Or open an existing
-   project, or choose **Create manually instead** to use the wizard.
-4. **Analysis & Design documents** are shown for the project; switch to
+2. **Upload the SRS** (`.pdf` / `.txt` / `.md`, up to 10 MB) on the first screen and click
+   **Upload & Analyze**. This creates the project; the Project Key defaults to the file name.
+   (Or open an existing project, or choose **Create manually instead**.)
+3. **Review** what Claude extracted.
+4. **Open New Project Wizard** to check the pre-filled data, add the start date and any
+   organisational data, and **Save Project**. (Or skip straight to Analysis & Design.)
+5. **Analysis & Design** shows the project's documents; switch to
    **Advanced / Full Editor** (`/classic`) for the full Data Sheet and all artifacts.
-5. **Generate WBS** builds the `<ProjectKey>-WBS` JIRA-upload table; the timesheet can be
+6. **Generate WBS** builds the `<ProjectKey>-WBS` JIRA-upload table; the timesheet can be
    generated from it.
-6. **Copy To Desktop / Export** downloads any artifact as `.xls`, `.csv`, `.html`, `.doc` or `.pdf`.
-7. **Protect/Unprotect** (Excel layout) toggles read-only mode.
+7. **Copy To Desktop / Export** downloads any artifact as `.xls`, `.csv`, `.html`, `.doc` or `.pdf`.
+8. **Protect/Unprotect** (Excel layout) toggles read-only mode.
 
 ## Key API endpoints
 
@@ -306,3 +345,15 @@ GET  /api/projects/:id/export/:artifact[?format=csv|html|doc|pdf]   (default xls
 ```
 Project collections: `hrplan, phases, milestones, hardware, software, lists, docs, goals,
 training, process, environments, dar, agenda, modules`.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| "Failed to start — Invalid or expired session" | The login token in the browser is no longer valid (expired, `JWT_SECRET` changed, or the database was reset) | The app returns to `/login` automatically. If an old cached copy of the app is still running, press **Ctrl+Shift+R** once. After `docker compose down -v`, **sign up again**: accounts were wiped. |
+| SRS upload fails with "File is too large" / `413` | File over 10 MB | Upload a smaller file, or raise both `client_max_body_size` (Nginx) and `SRS_MAX_MB` (backend) |
+| SRS upload fails with `502` / `504` | The backend took longer than Nginx waits | Nginx waits 300 s (`proxy_read_timeout`); rebuild the frontend image if yours predates this. The project may still have been created, so check the project list before re-uploading. |
+| "ANTHROPIC_API_KEY not configured" | Key not passed to the backend container | Put it in the repo-root `.env` and run `docker compose up -d backend` |
+| "Could not read this PDF" | Scanned/image-only or unusual PDF | Re-save as PDF, or upload a `.txt`/`.md` export |
+| `npm run db:setup` → `ECONNREFUSED ...:5432` | No local PostgreSQL; the Docker database listens on **5433** | With Docker you don't need `db:setup`: the `db` container initializes itself |
+| `npm run db:setup` refuses to run | The database already has users/projects | Intended, since it would delete them. Use the migration, or `-- --force` to wipe deliberately |

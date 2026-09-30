@@ -1,5 +1,5 @@
 // Key Artifact Generator — Interactive Demo content.
-// Shared in-memory "demo data store" + reusable UI builders, then the 13
+// Shared in-memory "demo data store" + reusable UI builders, then the 12
 // scenes (render + optional autoplay script) consumed by app.js.
 (function () {
   'use strict';
@@ -43,6 +43,64 @@
   STORE.rows.agenda = [
     { topic: 'Welcome & Introductions' }, { topic: 'Project Scope & Objectives' }
   ];
+
+  // What Claude extracts from the sample SRS for the New Project wizard (the
+  // real app saves this into the project at upload time). Org data an SRS
+  // never contains - HR plan, resources, stakeholder matrix, agenda - stays as
+  // the sample rows above.
+  const SRS_FILE = 'SRS_Payroll_Module.pdf';
+  const SRS_PREFILL = {
+    project: {
+      project_key: 'SRS_Payroll_Module', project_type: 'MQC', fp_count: '140', start_date: '',
+      technology: 'Node.js, React, PostgreSQL',
+      brief_desc: 'Migrate the legacy payroll batch system to a modern, API-driven service with self-service payslips.',
+      scope: 'Payroll calculation, payslip generation, employee self-service portal.'
+    },
+    application: {
+      app_name: 'PayrollCore', domain: 'HR / Finance', technology: 'Node.js 20, React 18, PostgreSQL 16',
+      description: 'Payroll processing platform for 12,000 employees across 4 countries.'
+    },
+    rows: {
+      hardware: [
+        { description: 'Application Server', spec: '8-core / 32GB RAM', qty: '2' },
+        { description: 'Database Server', spec: '16-core / 128GB RAM, 2TB SSD', qty: '1' }
+      ],
+      software: [
+        { description: 'PostgreSQL', version: '16', installations: '1' }, { description: 'Node.js', version: '20', installations: '2' },
+        { description: 'React', version: '18', installations: '1' }, { description: 'Nginx', version: '1.25', installations: '2' }
+      ],
+      environments: [
+        { env: 'Development', server: 'dev.payroll.internal', access: 'Developers' },
+        { env: 'UAT', server: 'uat.payroll.internal', access: 'Testers' },
+        { env: 'Production', server: 'prod cluster', access: 'Ops only' }
+      ],
+      docs: [{ name: 'Legacy payroll data dictionary', version: 'v2.1' }, { name: 'Statutory deduction rules', version: '2026' }],
+      constraints: [{ description: 'Payroll batch must finish within the 2-hour nightly window' }, { description: 'Go-live before the April financial-year start' }],
+      dependencies: [{ description: 'Bank file format sign-off from Treasury' }, { description: 'HRMS team to expose the employee master API' }],
+      assumptions: [{ description: 'Legacy data is available as nightly CSV exports' }, { description: 'Employees have corporate SSO accounts' }],
+      risks: [
+        { description: 'Legacy data export format may not map cleanly to the new schema' },
+        { description: 'Statutory rule changes mid-project' },
+        { description: 'Peak payroll-week load may exceed server capacity' }
+      ],
+      training: [{ name: 'Payroll domain walkthrough', type: 'Functional' }, { name: 'PostgreSQL performance tuning', type: 'Technical' }],
+      modules: [
+        { name: 'Payroll Engine', description: 'Nightly gross-to-net calculation' },
+        { name: 'Payslips', description: 'PDF payslip generation and delivery' },
+        { name: 'Self-Service Portal', description: 'Employees view payslips and tax forms' },
+        { name: 'Reports', description: 'Statutory and management reports' }
+      ],
+      goals: [{ metric: 'Batch run time', target: '< 2 hours' }, { metric: 'Payslip accuracy', target: '100%' }, { metric: 'Portal availability', target: '99.9%' }]
+    }
+  };
+  const SRS_SECTIONS = new Set(['appDetails', ...Object.keys(SRS_PREFILL.rows)]);
+  function applySrsPrefill() {
+    if (STORE.prefilled) return;
+    Object.assign(STORE.project, SRS_PREFILL.project);
+    Object.assign(STORE.application, SRS_PREFILL.application);
+    for (const [k, rows] of Object.entries(SRS_PREFILL.rows)) STORE.rows[k] = rows.map((r) => ({ ...r }));
+    STORE.prefilled = true;
+  }
 
   const SECTION_DEFS = [
     { id: 'appDetails', title: 'Application Details', group: 'Application-Data', kind: 'form' },
@@ -186,7 +244,8 @@
 
   window.__KAG_DEMO_INTERNALS__ = {
     STORE, SECTION_DEFS, SECTION_BY_ID, escapeAttr, sectionTitle, smallTbl, statTile,
-    rowsTableHTML, wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort
+    rowsTableHTML, wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort,
+    SRS_FILE, SRS_SECTIONS, applySrsPrefill
   };
 })();
 
@@ -195,7 +254,8 @@
   'use strict';
   const K = window.__KAG_DEMO_INTERNALS__;
   const { STORE, SECTION_DEFS, SECTION_BY_ID, sectionTitle, smallTbl, statTile,
-    wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort } = K;
+    wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort,
+    SRS_FILE, SRS_SECTIONS, applySrsPrefill } = K;
 
   function realDownload(artifactName, fmt) {
     const labels = { xls: 'Excel', csv: 'CSV', html: 'HTML', doc: 'Word', pdf: 'PDF' };
@@ -223,7 +283,8 @@
     let lastGroup = null, html = '';
     WIZ_STEPS.forEach((s, i) => {
       if (s.group && s.group !== lastGroup) { html += `<div class="wiz-group-label">${s.group}</div>`; lastGroup = s.group; }
-      html += `<button type="button" class="wiz-step${i === wizStepIdx ? ' current' : ''}${i < wizStepIdx ? ' done' : ''}" data-step="${i}"><span class="n">${i < wizStepIdx ? '✓' : i + 1}</span><span>${s.title}</span></button>`;
+      const fromSrs = STORE.prefilled && (s.id === '__create__' || SRS_SECTIONS.has(s.id));
+      html += `<button type="button" class="wiz-step${i === wizStepIdx ? ' current' : ''}${i < wizStepIdx ? ' done' : ''}" data-step="${i}"><span class="n">${i < wizStepIdx ? '✓' : i + 1}</span><span>${s.title}</span>${fromSrs ? '<span class="srs-tag" title="Pre-filled from the SRS">SRS</span>' : ''}</button>`;
     });
     return html;
   }
@@ -239,13 +300,13 @@
   }
   function renderWizardStage(root) {
     root.innerHTML =
-      `<h1>New Project Wizard</h1>` +
-      `<p class="lead">Every field from the Excel Data Sheet, collected step by step — ${WIZ_STEPS.length} steps across four groups, with inline validation.</p>` +
+      `<h1>New Project Wizard${STORE.prefilled ? ` <small class="prefilled-note">— pre-filled from ${SRS_FILE}</small>` : ''}</h1>` +
+      `<p class="lead">Every field from the Excel Data Sheet, step by step — ${WIZ_STEPS.length} steps across four groups. Steps tagged <span class="srs-tag">SRS</span> were filled in by Claude from the uploaded document; you review, add what an SRS can’t know (start date, HR plan) and save.</p>` +
       `<div class="wiz-progress"><div class="wiz-progress-track"><span style="width:${Math.round(((wizStepIdx + 1) / WIZ_STEPS.length) * 100)}%"></span></div></div>` +
       `<div class="wiz-shell" style="margin-top:14px"><div class="wiz-rail" id="wizRail">${wizardRailHTML()}</div><div class="wiz-content" id="wizContent"></div></div>` +
       `<div style="display:flex;justify-content:space-between;margin-top:14px">` +
       `<button type="button" class="btn" id="wizBack">← Back</button>` +
-      `<button type="button" class="btn accent" id="wizNext">${wizStepIdx === WIZ_STEPS.length - 1 ? 'Create Project →' : 'Next →'}</button></div>`;
+      `<button type="button" class="btn accent" id="wizNext">${wizStepIdx === WIZ_STEPS.length - 1 ? (STORE.prefilled ? 'Save Project →' : 'Create Project →') : 'Next →'}</button></div>`;
     renderWizStep(root);
     root.querySelector('#wizRail').addEventListener('click', (e) => {
       const btn = e.target.closest('[data-step]'); if (!btn) return;
@@ -254,7 +315,7 @@
     root.querySelector('#wizBack').addEventListener('click', () => { if (wizStepIdx > 0) { wizStepIdx--; renderWizardStage(root); } });
     root.querySelector('#wizNext').addEventListener('click', () => {
       if (wizStepIdx < WIZ_STEPS.length - 1) { wizStepIdx++; renderWizardStage(root); }
-      else { Engine.toast('🎉 Project ' + (STORE.project.project_key || 'DEMO-01') + ' created!'); }
+      else { Engine.toast('🎉 Project ' + (STORE.project.project_key || 'DEMO-01') + (STORE.prefilled ? ' saved!' : ' created!')); }
     });
   }
 
@@ -366,12 +427,15 @@
     try {
       const log = root.querySelector('#extractLog');
       log.style.display = 'block'; log.innerHTML = '';
+      const key = (root.querySelector('#srsKey') || {}).value || 'SRS_Payroll_Module';
       const lines = [
-        'Reading SRS_Payroll_Module.pdf (14 pages)…',
+        `Reading ${SRS_FILE} (14 pages)…`,
+        `Creating project ${key}…`,
         'Sending to Claude (claude-sonnet-5) via extract_srs tool…',
-        '✓ 8 business requirements found', '✓ 14 functional requirements found',
-        '✓ 6 non-functional requirements found', '✓ 5 use cases found',
-        '✓ 7 design components, 9 API endpoints found', '✓ Extraction complete'
+        '✓ 8 business, 14 functional, 6 non-functional requirements', '✓ 5 use cases, 7 design components, 9 API endpoints',
+        '✓ Wizard data: application details, 2 hardware, 4 software, 3 environments',
+        '✓ Wizard data: 3 risks, 2 constraints, 2 assumptions, 2 dependencies, 4 modules, 3 goals',
+        '✓ Extraction complete — project created and pre-filled'
       ];
       for (const l of lines) {
         const row = document.createElement('div');
@@ -380,7 +444,9 @@
         log.appendChild(row);
         await Engine.wait(380);
       }
-      Engine.toast('AI extraction complete — Analysis & Design pre-filled');
+      applySrsPrefill();
+      STORE.project.project_key = key;
+      Engine.toast('Project ' + key + ' created — Analysis, Design and wizard data pre-filled');
     } catch (e) { if (e !== Engine.CANCELLED) console.error(e); }
   }
 
@@ -486,12 +552,12 @@
   };
 })();
 
-// ---------------- The 13 scenes ----------------
+// ---------------- The 12 scenes ----------------
 (function () {
   'use strict';
   const K = window.__KAG_DEMO_INTERNALS__;
   const K2 = window.__KAG_DEMO_INTERNALS2__;
-  const { STORE, SECTION_BY_ID, refreshRowsTable, computeEffort } = K;
+  const { STORE, SECTION_BY_ID, refreshRowsTable, computeEffort, SRS_FILE, applySrsPrefill } = K;
   const { realDownload, WIZ_STEPS, renderWizardStage, renderDatasheetStage, effortHTML, wireEffort, refreshEffort,
     buildWbsRows, wbsHTML, fillWbsBody, runGenerateWbs, runExtraction, ARTIFACTS, openArtifactModal, artCardHTML,
     LAYOUTS, renderLayoutsStage } = K2;
@@ -500,7 +566,9 @@
 
   const DEMO_PROJECTS = [{ key: 'GICPI-V1110', type: 'Web Application' }, { key: 'PAYROLL-2.0', type: 'Migration' }];
   const RECAP = [
-    'Guided, step-by-step onboarding wizard', 'AI-powered SRS upload & extraction (Claude)',
+    'SRS-first onboarding — upload a requirements doc and the project is created for you',
+    'Claude extracts Analysis & Design plus the wizard data (app details, hardware, software, risks, modules…)',
+    'Pre-filled New Project wizard — review, complete and save in place',
     'Live effort, schedule & FTE calculation engine', 'Data Sheet CRUD across 4 groups, 24 sections',
     'One-click WBS generation for JIRA import', '12 auto-assembled key artifacts',
     '5 export formats — Excel, CSV, HTML, Word, PDF', '3 switchable UI layouts + Protect/Unprotect',
@@ -530,8 +598,8 @@
       render(root) {
         root.innerHTML =
           `<div class="scene-kicker">Interactive Product Tour</div><h1>Key Artifact Generator</h1>` +
-          `<p class="lead">One master <b>Data Sheet</b> drives everything: a Kick-Off deck, an Application Initiation Note, a full Internal Project Plan, a JIRA-ready WBS — and, powered by Claude, an AI-generated Analysis &amp; Design Document straight from your SRS.</p>` +
-          `<div class="chip-row">${['🧭 <b>Guided Wizard</b>', '🤖 <b>AI SRS Extraction</b>', '📊 <b>Live Effort &amp; Schedule Calc</b>', '📄 <b>12 Generated Artifacts</b>', '⬇️ <b>5 Export Formats</b>', '🎨 <b>3 Switchable UI Layouts</b>'].map((c) => `<span class="chip">${c}</span>`).join('')}</div>` +
+          `<p class="lead">One master <b>Data Sheet</b> drives everything: a Kick-Off deck, an Application Initiation Note, a full Internal Project Plan, a JIRA-ready WBS — and, powered by Claude, an AI-generated Analysis &amp; Design Document straight from your SRS. Start by uploading the SRS: Claude creates the project and pre-fills the project wizard for you.</p>` +
+          `<div class="chip-row">${['🤖 <b>SRS-First, AI Pre-filled</b>', '🧭 <b>Guided Wizard</b>', '📊 <b>Live Effort &amp; Schedule Calc</b>', '📄 <b>12 Generated Artifacts</b>', '⬇️ <b>5 Export Formats</b>', '🎨 <b>3 Switchable UI Layouts</b>'].map((c) => `<span class="chip">${c}</span>`).join('')}</div>` +
           `<div class="device"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Onboarding</div></div>` +
           `<div class="device-body"><p style="margin:0 0 10px;color:var(--text-dim);font-size:13px">This tour is <b style="color:var(--text)">self-running</b> — sit back and watch, or flip to <b style="color:var(--accent)">Explore</b> up top and click through everything yourself.</p>` +
           `<button type="button" class="btn accent" id="welcomeStart">Start the tour →</button></div></div>`;
@@ -566,135 +634,68 @@
         const btn = root.querySelector('#authLoginBtn');
         await E.clickFx(btn);
         E.toast('Welcome back, Priya!');
-        E.setCaption('Logged in — landing on the Onboarding home.', 'GUIDE');
+        E.setCaption('Logged in — the first screen is Upload Requirements Document.', 'GUIDE');
         await E.wait(900);
       }
     },
     {
-      id: 'picker', group: 'Get Started', icon: '📁', title: 'Projects — Pick or Start New',
-      blurb: 'Pick an existing project to jump straight to its artifacts, or start a brand-new one.',
+      id: 'start', group: 'SRS-First Onboarding', icon: '🤖', title: 'Start From Your SRS',
+      blurb: 'The first screen after login: upload an SRS and Claude creates the project for you.',
       render(root) {
-        root.innerHTML = `<h1>Projects</h1><p class="lead">Pick an existing project to jump straight to its artifacts, or start a brand-new one.</p>` +
-          `<div class="card-grid">${DEMO_PROJECTS.map((p) => `<button type="button" class="art-card" data-proj="${p.key}"><h3>${p.key}</h3><p>${p.type}</p></button>`).join('')}</div>` +
-          `<button type="button" class="btn accent" id="newProjBtn" style="margin-top:16px">+ New Project</button>`;
+        root.innerHTML = `<h1>Upload Requirements Document</h1><p class="lead">The first screen after login. Upload a .txt, .md or .pdf SRS (up to 10 MB) — the project is created from it, and Claude fills in its details, the Analysis &amp; Design documents and the New Project wizard via a structured <code>extract_srs</code> tool call.</p>` +
+          `<div class="device" style="max-width:600px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Upload Requirements Document</div></div>` +
+          `<div class="device-body"><div class="dropzone" id="dropzone"><span class="dz-icon">📄</span><span id="dzLabel">Choose a file…</span></div>` +
+          `<div class="form-grid" style="margin-top:12px"><label class="field full"><span>Project Key</span><input id="srsKey" placeholder="Defaults to the file name"></label></div>` +
+          `<div class="chip-row"><button type="button" class="btn" id="manualBtn">Create manually instead</button><button type="button" class="btn accent" id="analyzeBtn">Upload &amp; Analyze →</button></div>` +
+          `<div class="extract-log" id="extractLog" style="display:none"></div>` +
+          `<h2 style="margin-top:18px">Or open an existing project</h2>` +
+          `<div class="card-grid">${DEMO_PROJECTS.map((p) => `<button type="button" class="art-card" data-proj="${p.key}"><h3>${p.key}</h3><p>${p.type}</p></button>`).join('')}</div></div></div>`;
+        const pickFile = () => {
+          root.querySelector('#dzLabel').textContent = SRS_FILE;
+          root.querySelector('#dropzone').classList.add('drag');
+          const key = root.querySelector('#srsKey');
+          if (!key.value) key.value = SRS_FILE.replace(/\.[^.]+$/, '');
+        };
+        root.querySelector('#dropzone').addEventListener('click', pickFile);
+        root.querySelector('#analyzeBtn').addEventListener('click', async () => {
+          pickFile();
+          await runExtraction(root);
+          await Engine.wait(900);
+          window.gotoScene('review');
+        });
+        root.querySelector('#manualBtn').addEventListener('click', () => Engine.toast('Opens the same step-by-step wizard with a blank draft — no SRS needed.'));
         root.querySelectorAll('[data-proj]').forEach((c) => c.addEventListener('click', () => {
           Engine.toast('Opening ' + c.dataset.proj + '’s Analysis & Design home…');
           window.gotoScene('artifacts');
         }));
-        root.querySelector('#newProjBtn').addEventListener('click', () => {
-          Engine.toast('Opening the New Project wizard…');
-          window.gotoScene('wizard');
-        });
       },
       async script(E, stage) {
         const root = root_(stage);
-        for (const c of root.querySelectorAll('[data-proj]')) await E.pulse(c, 420);
-        await E.clickFx(root.querySelector('#newProjBtn'));
-        E.setCaption('Starting a brand-new project…', 'GUIDE');
-        await E.wait(600);
-      }
-    },
-    {
-      id: 'wizard', group: 'Guided Onboarding', icon: '🧭', title: 'New Project Wizard',
-      blurb: 'A guided, validated, step-by-step wizard collects the entire Data Sheet.',
-      render(root) { K2.wizStepIdx = 0; renderWizardStage(root); },
-      async script(E, stage) {
-        const root = root_(stage);
-        K2.wizStepIdx = 0; renderWizardStage(root);
-        await E.wait(400);
-        await E.typeInto(root.querySelector('[data-key="project_key"]'), 'PAY-MIGR-02');
-        await E.typeInto(root.querySelector('[data-key="project_type"]'), 'Migration');
-        await E.typeInto(root.querySelector('[data-key="fp_count"]'), '165');
-        await E.typeInto(root.querySelector('[data-key="start_date"]'), '2026-09-14');
-        await E.typeInto(root.querySelector('[data-key="technology"]'), 'Node.js, React, PostgreSQL');
-        await E.typeInto(root.querySelector('[data-key="brief_desc"]'), 'Migrate the legacy payroll batch system to a modern, API-driven service.');
-        E.setCaption('Application-Data → Hardware — adding an inventory row…', 'GUIDE');
-        await E.wait(500);
-        K2.wizStepIdx = WIZ_STEPS.findIndex((s) => s.id === 'hardware'); renderWizardStage(root);
-        await E.wait(400);
-        let pane = root.querySelector('#wizContent');
-        if (!STORE.rows.hardware.some((r) => r.description === 'Test Environment Server')) {
-          STORE.rows.hardware.push({});
-          refreshRowsTable(pane, 'hardware', SECTION_BY_ID.hardware.cols);
-          let lastRow = pane.querySelector('.rows-body tr:last-child');
-          let inputs = lastRow.querySelectorAll('input');
-          await E.typeInto(inputs[0], 'Test Environment Server');
-          await E.typeInto(inputs[1], '4-core / 16GB RAM');
-          await E.typeInto(inputs[2], '1');
-        } else {
-          await E.pulse(pane.querySelector('.rows-body'), 500);
-        }
-        E.setCaption('Project-Data → Human Resource Plan — already has resources staffed.', 'GUIDE');
-        await E.wait(500);
-        K2.wizStepIdx = WIZ_STEPS.findIndex((s) => s.id === 'hrplan'); renderWizardStage(root);
-        await E.wait(300);
-        pane = root.querySelector('#wizContent');
-        await E.pulse(pane.querySelector('.rows-body'), 600);
-        E.setCaption('Project-Data → Risks — capturing a known risk.', 'GUIDE');
-        await E.wait(500);
-        K2.wizStepIdx = WIZ_STEPS.findIndex((s) => s.id === 'risks'); renderWizardStage(root);
-        await E.wait(300);
-        pane = root.querySelector('#wizContent');
-        if (!STORE.rows.risks.some((r) => r.description === 'Legacy data export format may not map cleanly to the new schema')) {
-          STORE.rows.risks.push({});
-          refreshRowsTable(pane, 'risks', SECTION_BY_ID.risks.cols);
-          const lastRow = pane.querySelector('.rows-body tr:last-child');
-          const inputs = lastRow.querySelectorAll('input');
-          await E.typeInto(inputs[0], 'Legacy data export format may not map cleanly to the new schema');
-        } else {
-          await E.pulse(pane.querySelector('.rows-body'), 500);
-        }
-        E.setCaption('Estimated Effort — standard phases are seeded automatically.', 'GUIDE');
-        await E.wait(500);
-        K2.wizStepIdx = WIZ_STEPS.findIndex((s) => s.id === 'effort'); renderWizardStage(root);
-        await E.wait(300);
-        pane = root.querySelector('#wizContent');
-        await E.pulse(pane.querySelector('table.tbl'), 600);
-        await E.wait(400);
-        E.toast('🎉 Project PAY-MIGR-02 created!');
-        E.setCaption('Project created — moving straight into the SRS upload step.', 'GUIDE');
-        await E.wait(900);
-      }
-    },
-    {
-      id: 'srs', group: 'Guided Onboarding', icon: '🤖', title: 'AI SRS Upload & Extraction',
-      blurb: 'Upload an SRS and Claude extracts structured requirements & design data automatically.',
-      render(root) {
-        root.innerHTML = `<h1>Upload Requirements Document</h1><p class="lead">Upload a .txt, .md or .pdf SRS — Claude reads it and auto-fills the Analysis &amp; Design artifacts via a structured <code>extract_srs</code> tool call.</p>` +
-          `<div class="device" style="max-width:560px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Upload Requirements</div></div>` +
-          `<div class="device-body"><div class="dropzone" id="dropzone"><span class="dz-icon">📄</span><span id="dzLabel">Choose a file…</span></div>` +
-          `<div class="chip-row"><button type="button" class="btn" id="skipBtn">Skip, continue manually →</button><button type="button" class="btn accent" id="analyzeBtn">Upload &amp; Analyze →</button></div>` +
-          `<div class="extract-log" id="extractLog" style="display:none"></div></div></div>`;
-        root.querySelector('#dropzone').addEventListener('click', () => {
-          root.querySelector('#dzLabel').textContent = 'SRS_Payroll_Module.pdf';
-          root.querySelector('#dropzone').classList.add('drag');
-        });
-        root.querySelector('#analyzeBtn').addEventListener('click', () => runExtraction(root));
-        root.querySelector('#skipBtn').addEventListener('click', () => Engine.toast('Continuing without AI extraction — fill details in manually anytime.'));
-      },
-      async script(E, stage) {
-        const root = root_(stage);
-        root.querySelector('#dropzone').classList.add('drag');
-        root.querySelector('#dzLabel').textContent = 'SRS_Payroll_Module.pdf';
-        E.setCaption('Dropping SRS_Payroll_Module.pdf onto the upload zone…', 'GUIDE');
-        await E.wait(600);
+        E.setCaption('Dropping ' + SRS_FILE + ' onto the upload zone — the Project Key defaults to the file name.', 'GUIDE');
+        await E.clickFx(root.querySelector('#dropzone'));
+        root.querySelector('#dropzone').click();
+        await E.pulse(root.querySelector('#srsKey'), 500);
         await E.clickFx(root.querySelector('#analyzeBtn'));
-        E.setCaption('Claude is reading the document and extracting structured data…', 'AI');
+        E.setCaption('The project is created, then Claude reads the document and extracts structured data…', 'AI');
         await runExtraction(root);
         await E.wait(900);
       }
     },
     {
-      id: 'review', group: 'Guided Onboarding', icon: '✅', title: 'Review Extracted Data',
-      blurb: "A quick summary of everything the AI extraction picked up.",
+      id: 'review', group: 'SRS-First Onboarding', icon: '✅', title: 'Review Extracted Data',
+      blurb: 'A summary of what Claude found, with a one-click jump into the pre-filled wizard.',
       render(root) {
-        root.innerHTML = `<h1>Review What Claude Found</h1><p class="lead">A quick summary before moving on to the generated Analysis &amp; Design documents.</p>` +
+        applySrsPrefill();
+        root.innerHTML = `<h1>Review What Claude Found</h1><p class="lead">A summary of the extraction for <b>${STORE.project.project_key}</b> — then open the pre-filled wizard, or go straight to the Analysis &amp; Design documents.</p>` +
           `<div class="stat-grid">${[['Business Reqs', 'brStat'], ['Functional Reqs', 'frStat'], ['Non-Functional Reqs', 'nfrStat'], ['Use Cases', 'ucStat'], ['Components', 'compStat'], ['API Endpoints', 'epStat']].map(([label, id]) => `<div class="stat-tile"><b id="${id}">0</b><span>${label}</span></div>`).join('')}</div>` +
           `<div class="form-grid" style="margin-top:10px">` +
-          `<div class="field full"><span>Brief Description</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">Migrate the legacy payroll batch system to a modern, API-driven service with self-service payslips.</p></div>` +
-          `<div class="field"><span>Scope</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">Payroll calculation, payslip generation, employee self-service portal.</p></div>` +
-          `<div class="field"><span>Technology</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">Node.js, React, PostgreSQL</p></div></div>` +
-          `<button type="button" class="btn accent" id="reviewContinue" style="margin-top:16px">Continue to Analysis &amp; Design →</button>`;
+          `<div class="field full"><span>Brief Description</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">${STORE.project.brief_desc}</p></div>` +
+          `<div class="field"><span>Scope</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">${STORE.project.scope}</p></div>` +
+          `<div class="field"><span>Technology</span><p style="color:var(--text-dim);font-size:13px;margin:4px 0 0">${STORE.project.technology}</p></div></div>` +
+          `<div class="wizard-cta"><div><b>Complete the project setup</b><p>Open the New Project wizard pre-filled with everything found in the SRS — application details, hardware, software, risks, modules and more.</p></div>` +
+          `<button type="button" class="btn accent" id="openWizardBtn">Open New Project Wizard</button></div>` +
+          `<button type="button" class="btn" id="reviewContinue" style="margin-top:16px">Continue to Analysis &amp; Design →</button>`;
+        root.querySelector('#openWizardBtn').addEventListener('click', () => window.gotoScene('wizard'));
         root.querySelector('#reviewContinue').addEventListener('click', () => window.gotoScene('artifacts'));
       },
       async script(E, stage) {
@@ -704,9 +705,53 @@
           const node = root.querySelector('#' + id);
           for (let v = 0; v <= target; v++) { node.textContent = v; await E.wait(32); }
         }
-        await E.pulse(root.querySelector('#reviewContinue'), 600);
-        E.setCaption('These numbers feed the Analysis and Design Document artifacts directly.', 'GUIDE');
-        await E.wait(500);
+        E.setCaption('These feed the Analysis and Design documents — and the wizard is ready, pre-filled.', 'GUIDE');
+        await E.wait(400);
+        await E.clickFx(root.querySelector('#openWizardBtn'));
+        E.setCaption('Opening the New Project wizard on this project…', 'GUIDE');
+        await E.wait(600);
+      }
+    },
+    {
+      id: 'wizard', group: 'SRS-First Onboarding', icon: '🧭', title: 'Pre-filled Project Wizard',
+      blurb: 'The step-by-step wizard, already filled in from the SRS — review, complete and save.',
+      render(root) { applySrsPrefill(); K2.wizStepIdx = 0; renderWizardStage(root); },
+      async script(E, stage) {
+        const root = root_(stage);
+        applySrsPrefill();
+        const show = async (id, caption, ms = 650) => {
+          K2.wizStepIdx = WIZ_STEPS.findIndex((s) => s.id === id); renderWizardStage(root);
+          E.setCaption(caption, 'AI');
+          await E.wait(300);
+          const pane = root.querySelector('#wizContent');
+          await E.pulse(pane.querySelector('.rows-body') || pane.querySelector('.form-grid') || pane, ms);
+          return root.querySelector('#wizContent');
+        };
+        K2.wizStepIdx = 0; renderWizardStage(root);
+        E.setCaption('Create Project — key, FP estimate, technology, description and scope came from the SRS.', 'AI');
+        await E.wait(400);
+        await E.pulse(root.querySelector('#wizContent .form-grid'), 700);
+        E.setCaption('The start date isn’t in the SRS — that’s yours to add.', 'GUIDE');
+        await E.typeInto(root.querySelector('[data-key="start_date"]'), '2026-09-14');
+        await show('appDetails', 'Application Details — name, domain, technology and description, all from the SRS.');
+        await show('hardware', 'Hardware — both servers and their specs were read from the document.');
+        await show('risks', 'Risks — three risks extracted; edit or delete any of them.');
+        await show('modules', 'Module Details — four functional modules identified by Claude.');
+        const pane = await show('hrplan', 'Human Resource Plan — org data an SRS can’t contain; add your team here.', 500);
+        if (!STORE.rows.hrplan.some((r) => r.name === 'Meera Iyer')) {
+          STORE.rows.hrplan.push({});
+          refreshRowsTable(pane, 'hrplan', SECTION_BY_ID.hrplan.cols);
+          const inputs = pane.querySelectorAll('.rows-body tr:last-child input');
+          await E.typeInto(inputs[0], 'Team Lead');
+          await E.typeInto(inputs[1], 'Meera Iyer');
+          await E.typeInto(inputs[2], '50');
+        }
+        K2.wizStepIdx = WIZ_STEPS.length - 1; renderWizardStage(root);
+        await E.wait(300);
+        await E.clickFx(root.querySelector('#wizNext'));
+        E.toast('🎉 Project ' + STORE.project.project_key + ' saved!');
+        E.setCaption('Saved in place — the same project, now complete. Every artifact picks up this data.', 'GUIDE');
+        await E.wait(900);
       }
     },
     {
@@ -883,7 +928,7 @@
         root.innerHTML = `<h1>You've seen the full tour</h1><p class="lead">Everything Key Artifact Generator does, end to end — from a blank Data Sheet to a client-ready artifact set.</p>` +
           `<ul class="checklist" id="recapList">${RECAP.map((t) => `<li><span class="tick">•</span><span>${t}</span></li>`).join('')}</ul>` +
           `<div class="chip-row"><button type="button" class="btn accent" id="finishRestart">↺ Restart the demo</button><button type="button" class="btn" id="finishExplore">🖱 Switch to Explore</button></div>` +
-          `<p class="note" style="margin-top:18px">Want the real thing? See <b>README.md</b> in the project root, or run <code>npm run db:setup &amp;&amp; npm start</code> inside <code>backend/</code>.</p>`;
+          `<p class="note" style="margin-top:18px">Want the real thing? See <b>README.md</b> in the project root, or run <code>docker compose up -d --build</code> there and open <code>http://localhost:8081</code>.</p>`;
         root.querySelector('#finishRestart').addEventListener('click', () => document.getElementById('btnRestart').click());
         root.querySelector('#finishExplore').addEventListener('click', () => document.getElementById('modeExploreBtn').click());
       },

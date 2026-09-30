@@ -372,3 +372,11 @@ table.tbl tr.total-row td{font-weight:700; color:var(--text); background:rgba(91
 :root[data-theme="light"] .device-dots i{background:#c7cde0}
 :root[data-theme="light"] .hl-pulse::after{border-color:var(--accent)}
 
+
+/* SRS-first onboarding: pre-filled wizard markers */
+.srs-tag{margin-left:auto; font-size:9.5px; font-weight:800; letter-spacing:.4px; padding:2px 6px; border-radius:5px; background:var(--accent-soft); color:var(--accent); border:1px solid rgba(91,140,255,.35)}
+.prefilled-note{font-size:13px; font-weight:500; color:var(--text-faint)}
+.wizard-cta{display:flex; align-items:center; gap:16px; margin-top:16px; padding:14px 16px; border:1px solid rgba(91,140,255,.45); border-radius:10px; background:var(--accent-soft)}
+.wizard-cta p{margin:3px 0 0; font-size:12.5px; color:var(--text-dim)}
+.wizard-cta .btn{flex-shrink:0}
+@media (max-width:640px){ .wizard-cta{flex-direction:column; align-items:stretch} }
