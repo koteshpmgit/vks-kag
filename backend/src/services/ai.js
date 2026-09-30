@@ -72,9 +72,74 @@ const EXTRACT_TOOL = {
           }
         },
         required: ['architecture_overview', 'components', 'api_endpoints', 'db_design', 'sequence_flows']
+      },
+      // Everything the New Project wizard asks for that an SRS can plausibly
+      // contain - saved into the project's own tables so the wizard (and the
+      // artifacts) open pre-filled. Organizational data (HR plan, process
+      // tailoring, DAR, kick-off agenda) isn't in an SRS, so isn't asked for.
+      wizard: {
+        type: 'object',
+        properties: {
+          project: {
+            type: 'object',
+            properties: {
+              fp_count_estimate: { type: 'integer', description: 'Rough function point estimate for the whole scope (at least 10)' },
+              quality_objective: { type: 'string', description: 'Quality objectives / acceptance targets stated in the document' }
+            }
+          },
+          application: {
+            type: 'object',
+            properties: {
+              app_name: { type: 'string', description: 'Name of the application/system' },
+              domain: { type: 'string', description: 'Business domain, e.g. Banking, Healthcare' },
+              category: { type: 'string', description: 'Application category, e.g. Web application, Mobile app, Batch system' },
+              description: { type: 'string', description: 'Application description' },
+              acceptance_criteria: { type: 'string' },
+              technology: { type: 'string' },
+              scope: { type: 'string' },
+              life_cycle: { type: 'string' }
+            }
+          },
+          hardware: {
+            type: 'array', items: { type: 'object', properties: {
+              description: { type: 'string' }, spec: { type: 'string' }, quantity: { type: 'integer' } }, required: ['description'] }
+          },
+          software: {
+            type: 'array', items: { type: 'object', properties: {
+              description: { type: 'string' }, version: { type: 'string' }, installations: { type: 'integer' } }, required: ['description'] }
+          },
+          environments: {
+            type: 'array', description: 'Environments such as Development, Test, UAT, Production',
+            items: { type: 'object', properties: {
+              env_name: { type: 'string' }, server_path: { type: 'string' }, access_type: { type: 'string' } }, required: ['env_name'] }
+          },
+          docs: {
+            type: 'array', description: 'Documents/items handed over or referenced as inputs',
+            items: { type: 'object', properties: {
+              name: { type: 'string' }, version: { type: 'string' }, copy_type: { type: 'string', description: 'Hard or Soft' } }, required: ['name'] }
+          },
+          constraints: { type: 'array', items: { type: 'string' } },
+          dependencies: { type: 'array', items: { type: 'string' } },
+          assumptions: { type: 'array', items: { type: 'string' } },
+          risks: { type: 'array', items: { type: 'string' } },
+          training: {
+            type: 'array', items: { type: 'object', properties: {
+              name: { type: 'string' }, train_type: { type: 'string' }, participants: { type: 'string' } }, required: ['name'] }
+          },
+          modules: {
+            type: 'array', description: 'Functional modules/subsystems of the application',
+            items: { type: 'object', properties: {
+              name: { type: 'string' }, description: { type: 'string' } }, required: ['name'] }
+          },
+          goals: {
+            type: 'array', description: 'Measurable project goals/metrics (e.g. performance, availability, defect targets)',
+            items: { type: 'object', properties: {
+              metric_name: { type: 'string' }, frequency: { type: 'string' }, target: { type: 'string' } }, required: ['metric_name'] }
+          }
+        }
       }
     },
-    required: ['project', 'analysis', 'design']
+    required: ['project', 'analysis', 'design', 'wizard']
   }
 };
 
@@ -94,8 +159,8 @@ async function extractFromSrs(rawText) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 8000,
-      system: 'You are a business/systems analyst. Read the Software Requirements Specification (SRS) document provided and extract thorough, specific project, analysis and design data by calling the extract_srs tool exactly once. Prefer specific detail drawn from the document over generic filler; if a list item is not present in the document, omit it rather than inventing content.',
+      max_tokens: 16000,
+      system: 'You are a business/systems analyst. Read the Software Requirements Specification (SRS) document provided and extract thorough, specific project, analysis, design and project-setup (wizard) data by calling the extract_srs tool exactly once. Prefer specific detail drawn from the document over generic filler; if a list item is not present in the document, omit it rather than inventing content, and leave a text field out entirely (never write placeholders like "<UNKNOWN>" or "N/A") when the document does not say.',
       messages: [{ role: 'user', content: `SRS document:\n\n${text}` }],
       tools: [EXTRACT_TOOL],
       tool_choice: { type: 'tool', name: 'extract_srs' }

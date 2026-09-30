@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import API from '../../api/client.js';
 
+const MAX_MB = 10; // matches the backend's SRS upload limit
+
 export default function SrsUploadStep({ projectId, onResult, onSkip, onBack }) {
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -8,6 +10,10 @@ export default function SrsUploadStep({ projectId, onResult, onSkip, onBack }) {
 
   const upload = async () => {
     if (!file) return;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB) - the maximum is ${MAX_MB} MB.`);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -29,7 +35,7 @@ export default function SrsUploadStep({ projectId, onResult, onSkip, onBack }) {
   return (
     <div className="ob-card">
       <h2>Upload Requirements Document</h2>
-      <p className="ob-hint">Upload your SRS (Software Requirements Specification) — a .txt, .md or .pdf file. Claude will read it and auto-fill the project's Analysis and Design artifacts.</p>
+      <p className="ob-hint">Upload your SRS (Software Requirements Specification) — a .txt, .md or .pdf file up to {MAX_MB} MB. Claude will read it and auto-fill the project's Analysis and Design artifacts.</p>
 
       <label className="ob-dropzone">
         <input type="file" accept=".txt,.md,.pdf" onChange={(e) => { setFile(e.target.files[0] || null); setError(''); }} />

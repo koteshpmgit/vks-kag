@@ -135,3 +135,12 @@
   .ob-steps span { display: none; }
   .ob-steps span.current { display: inline; }
 }
+
+/* Start screen (SRS upload first) */
+.ob-key-field { margin-top: 14px; margin-bottom: 0; }
+.ob-section-title { margin: 28px 0 10px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 13px; font-weight: 700; color: var(--text); }
+.ob-wizard-cta { display: flex; align-items: center; gap: 16px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-soft); }
+.ob-wizard-cta b { font-size: 13.5px; color: var(--text); }
+.ob-wizard-cta p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+.ob-wizard-cta .btn { flex-shrink: 0; }
+@media (max-width: 600px) { .ob-wizard-cta { flex-direction: column; align-items: stretch; } }

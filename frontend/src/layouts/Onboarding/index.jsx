@@ -3,20 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Wizard from '../WebApp/Wizard.jsx';
-import PickerStep from './PickerStep.jsx';
+import StartStep from './StartStep.jsx';
 import SrsUploadStep from './SrsUploadStep.jsx';
 import ReviewStep from './ReviewStep.jsx';
 import DocumentsStep from './DocumentsStep.jsx';
 
 // Phases:
-//  picker    - choose an existing project, or start a new one (skipped
-//              entirely when the user has no projects yet)
-//  wizard    - the full step-by-step "New Project" wizard - only shown while
-//              *creating* a project, never again afterwards
-//  srs       - upload the requirements doc for the project just created
-//  review    - summary of what the SRS extraction picked up
+//  start     - first screen after login: upload an SRS to create a new
+//              project from it, or open an existing project
+//  wizard    - the full step-by-step "New Project" wizard - only for
+//              creating a project manually ("Create manually instead")
+//  srs       - upload the requirements doc for an already-created project
+//              (after the wizard, or "Back" from review)
+//  review    - summary of what the SRS extraction picked up, with a button
+//              to open the wizard pre-filled from it (wizardEdit)
 //  documents - Analysis & Design artifacts; the ongoing "home" for a
-//              project, reached directly from the picker on every later
+//              project, reached directly from the start screen on every later
 //              visit (no wizard, no SRS/review re-run)
 const SRS_REVIEW_STEPS = [
   { id: 'srs', label: 'Upload Requirements' },
@@ -24,10 +26,17 @@ const SRS_REVIEW_STEPS = [
 ];
 
 export default function OnboardingLayout() {
-  const { projects, projectId, data, reload, switchProject } = useProjectData();
+  const { projectId, data, reload, switchProject, reloadProjects } = useProjectData();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [phase, setPhase] = useState(() => (projects.length === 0 ? 'wizard' : 'picker'));
+  const [phase, setPhase] = useState('start');
+
+  // project created from the start screen's SRS upload
+  const afterStart = async (id, extracted) => {
+    await reloadProjects();
+    await switchProject(id);
+    setPhase(extracted ? 'review' : 'documents');
+  };
 
   const afterSrs = async () => {
     await reload();
@@ -61,24 +70,36 @@ export default function OnboardingLayout() {
       )}
 
       <main className="ob-content">
-        {phase === 'picker' && (
-          <PickerStep
+        {phase === 'start' && (
+          <StartStep
+            onCreated={afterStart}
             onSelect={async (id) => { await switchProject(id); setPhase('documents'); }}
-            onNewProject={() => setPhase('wizard')}
+            onManual={() => setPhase('wizard')}
           />
         )}
         {phase === 'srs' && projectId && (
-          <SrsUploadStep projectId={projectId} onResult={afterSrs} onSkip={() => setPhase('review')} onBack={() => setPhase('picker')} />
+          <SrsUploadStep projectId={projectId} onResult={afterSrs} onSkip={() => setPhase('review')} onBack={() => setPhase('start')} />
         )}
-        {phase === 'review' && data && <ReviewStep data={data} onNext={() => setPhase('documents')} onBack={() => setPhase('srs')} />}
-        {phase === 'documents' && <DocumentsStep onSwitchProject={() => setPhase('picker')} />}
+        {phase === 'review' && data && (
+          <ReviewStep
+            data={data}
+            onNext={() => setPhase('documents')}
+            onBack={() => setPhase('srs')}
+            onOpenWizard={() => setPhase('wizardEdit')}
+          />
+        )}
+        {phase === 'documents' && <DocumentsStep onSwitchProject={() => setPhase('start')} />}
       </main>
 
       {phase === 'wizard' && (
-        // Closing without finishing always lands on the picker (never
-        // re-opens itself) - even with zero projects it still shows a
-        // working "+ New Project" button to try again.
-        <Wizard onClose={() => setPhase('picker')} onCreated={() => setPhase('srs')} />
+        // Closing without finishing goes back to the start screen (never
+        // re-opens itself).
+        <Wizard onClose={() => setPhase('start')} onCreated={() => setPhase('srs')} />
+      )}
+      {phase === 'wizardEdit' && data && (
+        // Same wizard, opened on the project just created from the SRS and
+        // pre-filled with what was extracted from it; saves in place.
+        <Wizard projectId={data.project.id} onClose={() => setPhase('review')} onCreated={() => setPhase('documents')} />
       )}
     </div>
   );

@@ -32,6 +32,11 @@ services:
       PGDATABASE: key_artifact_generator
       PGUSER: postgres
       PGPASSWORD: postgres
+      # Read from the host shell or a root-level .env file (gitignored).
+      # ANTHROPIC_API_KEY is required for SRS extraction on the Analysis screen.
+      JWT_SECRET: ${JWT_SECRET:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
     ports:
       - "3001:3001"
     restart: unless-stopped
@@ -41,6 +46,9 @@ services:
     container_name: kag-frontend
     depends_on:
       - backend
+    environment:
+      # Docker's embedded DNS only - see frontend/nginx.conf.template
+      NGINX_RESOLVER: 127.0.0.11
     ports:
       - "8081:80"          # host port 8080 is taken by an unrelated container on this machine
     restart: unless-stopped

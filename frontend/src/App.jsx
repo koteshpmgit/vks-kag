@@ -12,12 +12,17 @@ import Signup from './pages/Signup.jsx';
 
 function Boot({ children }) {
   const { initialLoading, error } = useProjectData();
+  const { logout } = useAuth();
   if (error) {
+    const sessionError = /session|authenticated/i.test(error);
     return (
       <div style={{ padding: 40, fontFamily: 'sans-serif' }}>
         <h2>Failed to start</h2>
         <p>{error}</p>
-        <p>Is the backend running and the database set up? Run: <code>npm run db:setup</code> in <code>backend/</code>.</p>
+        {sessionError
+          ? <p>Your login has expired or is no longer valid.</p>
+          : <p>Is the backend running and the database set up? Run: <code>npm run db:setup</code> in <code>backend/</code>.</p>}
+        <button type="button" onClick={logout}>Log in again</button>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ReviewStep({ data, onNext, onBack }) {
+export default function ReviewStep({ data, onNext, onBack, onOpenWizard }) {
   const { project, analysis, design } = data || {};
 
   return (
@@ -27,9 +27,19 @@ export default function ReviewStep({ data, onNext, onBack }) {
         <div className="ob-error"><p>No SRS was analyzed for this project yet — the Analysis and Design artifacts will be empty until one is uploaded.</p></div>
       )}
 
+      {onOpenWizard && (
+        <div className="ob-wizard-cta">
+          <div>
+            <b>Complete the project setup</b>
+            <p>Open the New Project wizard pre-filled with everything found in the SRS — application details, hardware, software, risks, modules and more.</p>
+          </div>
+          <button type="button" className="btn btn-accent" onClick={onOpenWizard}>Open New Project Wizard</button>
+        </div>
+      )}
+
       <div className="ob-actions">
         <button type="button" className="btn btn-light" onClick={onBack}>&larr; Back</button>
-        <button type="button" className="btn btn-accent" onClick={onNext}>Continue to Analysis &amp; Design →</button>
+        <button type="button" className={onOpenWizard ? 'btn btn-light' : 'btn btn-accent'} onClick={onNext}>Continue to Analysis &amp; Design →</button>
       </div>
     </div>
   );

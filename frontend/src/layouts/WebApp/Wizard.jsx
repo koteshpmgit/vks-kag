@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import API from '../../api/client.js';
+import API, { isoDate } from '../../api/client.js';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useDialogs } from '../../components/common/Dialogs.jsx';
 import { GROUPS, SECTION_META, COLLECTION_COLS, PROJ_FIELDS_CREATE, APP_FIELDS, LIST_KIND_MAP, SectionBody } from '../../data/sections.jsx';
@@ -37,17 +37,47 @@ function buildSteps() {
 }
 const STEPS = buildSteps();
 
-export default function Wizard({ onClose, onCreated }) {
-  const { data, reloadProjects, switchProject } = useProjectData();
+const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj?.[k] != null && obj[k] !== '').map((k) => [k, obj[k]]));
+
+// Draft pre-filled from an existing project (e.g. one just created from an SRS
+// upload, whose extracted data was saved into these same tables). Rows keep
+// their database id so finish() can update/delete them instead of duplicating.
+function draftFromProject(data) {
+  const project = pick(data.project, PROJ_FIELDS_CREATE.map(([k]) => k));
+  if (project.start_date) project.start_date = isoDate(project.start_date);
+  if (Number(project.fp_count) === 0) delete project.fp_count;
+  const lists = {};
+  for (const sid of DRAFT_SECTIONS) {
+    const rows = LIST_KIND_MAP[sid]
+      ? (data.lists || []).filter((r) => r.kind === LIST_KIND_MAP[sid])
+      : (data[sid] || []);
+    const cols = COLLECTION_COLS[sid] || [{ key: 'sno' }, { key: 'description' }];
+    lists[sid] = rows.map((r) => {
+      const row = { id: r.id, _localId: `db-${r.id}` };
+      cols.forEach((c) => { row[c.key] = c.type === 'date' ? isoDate(r[c.key]) : (r[c.key] ?? ''); });
+      return row;
+    });
+  }
+  return { project, application: pick(data.application, APP_FIELDS.map(([k]) => k)), lists };
+}
+
+// projectId set = complete an existing project (pre-filled, saves in place);
+// otherwise create a new one from a blank draft.
+export default function Wizard({ onClose, onCreated, projectId = null }) {
+  const { data, reload, reloadProjects, switchProject } = useProjectData();
   const { toast, confirmDialog } = useDialogs();
+  const editing = projectId != null && data?.project?.id === projectId;
   const [stepIdx, setStepIdx] = useState(0);
   const [visited, setVisited] = useState(new Set([0]));
   const [errors, setErrors] = useState([]);
-  const [draft, setDraft] = useState(() => ({
+  const [original] = useState(() => (editing ? draftFromProject(data) : null));
+  const [draft, setDraftState] = useState(() => original || ({
     project: {},
     application: {},
     lists: Object.fromEntries([...DRAFT_SECTIONS].map((k) => [k, []]))
   }));
+  const [dirty, setDirty] = useState(false);
+  const setDraft = (fn) => { setDirty(true); setDraftState(fn); };
 
   const step = STEPS[stepIdx];
 
@@ -97,6 +127,7 @@ export default function Wizard({ onClose, onCreated }) {
       const errs = validateStep(i);
       if (errs.length) { goTo(i); setErrors(errs); return; }
     }
+    if (editing) { await saveExisting(); return; }
     try {
       const p = await API.post('/projects', draft.project);
       const failures = [];
@@ -130,10 +161,38 @@ export default function Wizard({ onClose, onCreated }) {
     }
   };
 
+  const saveExisting = async () => {
+    const failures = [];
+    const attempt = async (label, fn) => { try { await fn(); } catch (e) { failures.push(`${label}: ${e.message}`); } };
+    await attempt('Project', () => API.put(`/projects/${projectId}`, { ...data.project, ...draft.project }));
+    if (data.project.application_id) {
+      await attempt('Application Details', () => API.put(`/application/${data.project.application_id}`,
+        { ...data.application, ...draft.application, app_name: draft.application.app_name || draft.project.project_key || '' }));
+    }
+    for (const [sid, rows] of Object.entries(draft.lists)) {
+      const coll = LIST_KIND_MAP[sid] ? 'lists' : sid;
+      const extra = LIST_KIND_MAP[sid] ? { kind: LIST_KIND_MAP[sid] } : {};
+      const keep = new Set(rows.filter((r) => r.id).map((r) => r.id));
+      for (const r of original.lists[sid]) {
+        if (!keep.has(r.id)) await attempt(sid, () => API.del(`/projects/${projectId}/${coll}/${r.id}`));
+      }
+      for (const row of rows) {
+        const { _localId, id, ...body } = row;
+        await attempt(sid, () => (id
+          ? API.put(`/projects/${projectId}/${coll}/${id}`, { ...body, ...extra })
+          : API.post(`/projects/${projectId}/${coll}`, { ...body, ...extra })));
+      }
+    }
+    await reloadProjects();
+    await reload();
+    toast(failures.length ? `Project saved with ${failures.length} item(s) failed to save` : 'Project saved');
+    if (onCreated) onCreated(data.project);
+    else onClose();
+  };
+
   const requestClose = async () => {
-    const touched = draft.project.project_key || Object.keys(draft.application).length || Object.values(draft.lists).some((r) => r.length);
-    if (touched) {
-      const ans = await confirmDialog('Discard this new project draft?', { title: 'Close wizard', buttons: ['Discard', 'Keep editing'] });
+    if (dirty) {
+      const ans = await confirmDialog(editing ? 'Discard your changes?' : 'Discard this new project draft?', { title: 'Close wizard', buttons: ['Discard', 'Keep editing'] });
       if (ans !== 'Discard') return;
     }
     onClose();
@@ -146,7 +205,7 @@ export default function Wizard({ onClose, onCreated }) {
       <div className="modal wizard-panel">
         <div className="wizard-header">
           <div className="wizard-header-top">
-            <h2>New Project</h2>
+            <h2>New Project{editing && <small className="wizard-prefilled"> — pre-filled from {data.srsDocument?.filename || 'your SRS'}</small>}</h2>
             <button className="modal-close" onClick={requestClose}>&times;</button>
           </div>
           <div className="wizard-progress">
@@ -194,7 +253,7 @@ export default function Wizard({ onClose, onCreated }) {
         <div className="wizard-footer">
           <button className="btn btn-light" onClick={prev} disabled={stepIdx === 0}>&larr; Back</button>
           {stepIdx === STEPS.length - 1
-            ? <button className="btn btn-accent" onClick={finish}>Create Project</button>
+            ? <button className="btn btn-accent" onClick={finish}>{editing ? 'Save Project' : 'Create Project'}</button>
             : <button className="btn btn-accent" onClick={next}>Next &rarr;</button>}
         </div>
       </div>

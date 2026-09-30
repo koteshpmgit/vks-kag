@@ -4,9 +4,18 @@ server {
     root         /usr/share/nginx/html;
     index        index.html;
 
+    # Nginx's default 1 MB body limit rejects typical SRS PDFs with a 413
+    # before they ever reach the backend - keep this >= the backend's multer
+    # limit (routes/api.js, 10 MB).
+    client_max_body_size 12m;
+
     # DNS re-resolution for BACKEND_ORIGIN, needed since it's a variable
     # (Cloud Run's *.run.app hostname, or the docker-compose 'backend' service name).
-    resolver 127.0.0.11 8.8.8.8 valid=30s;
+    # Nginx round-robins between listed resolvers (it does NOT fall back), so
+    # docker-compose sets NGINX_RESOLVER to Docker's embedded DNS only - with
+    # 8.8.8.8 in the list, every other lookup of 'backend' fails with "Host not
+    # found". Default (frontend/Dockerfile) keeps both for Cloud Run.
+    resolver ${NGINX_RESOLVER} valid=30s;
 
     # Reverse-proxy the API so the browser always calls same-origin /api/...
     # (matches the React client's relative '/api' base - no CORS/env wiring needed).
@@ -27,18 +36,21 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # SRS upload waits for Claude's analysis, which can take minutes for a
+        # large document - the 60s default cut it off with a 502/504.
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
 
-        # The 'backend' compose service name occasionally has a transient
-        # lookup failure against Docker's embedded DNS (127.0.0.11) - since
-        # the fallback resolver above (8.8.8.8) can never know that internal
-        # name either, such a blip becomes a hard 502 instead of just
-        # clearing up. Retry once against a fresh resolution before giving
-        # the client an error.
+        # Retry once on a transient 502 (e.g. a DNS blip resolving 'backend').
+        # Not on 504: a timed-out request may still be running on the backend.
         proxy_intercept_errors on;
-        error_page 502 504 = @api_retry;
+        error_page 502 = @api_retry;
     }
 
     location @api_retry {
+        # only replay safe requests - re-sending a POST (e.g. an SRS upload
+        # that creates a project) could apply it twice
+        if ($request_method != GET) { return 502; }
         set $backend_origin "${BACKEND_ORIGIN}";
         proxy_pass $backend_origin;
         proxy_http_version 1.1;
@@ -47,10 +59,19 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }
 
     # SPA fallback so client-side routes (/, /excel, /webapp) work on a hard reload.
     location / {
         try_files $uri $uri/ /index.html;
+    }
+
+    # index.html must never be served from browser cache - otherwise a
+    # rebuilt image keeps running the old (hash-named) JS bundle until a
+    # hard refresh. The hashed files under /assets/ are safe to cache.
+    location = /index.html {
+        add_header Cache-Control "no-cache";
     }
 }

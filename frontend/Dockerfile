@@ -52,4 +52,6 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 ENV PORT=80
 ENV BACKEND_ORIGIN=http://backend:3001
+# docker-compose overrides this with Docker's DNS only (see nginx.conf.template)
+ENV NGINX_RESOLVER="127.0.0.11 8.8.8.8"
 EXPOSE 80

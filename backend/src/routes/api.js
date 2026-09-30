@@ -11,7 +11,15 @@ const { generateTimesheet, getTimesheet, timesheetRows, dayNameFor } = require('
 const { extractFromSrs } = require('../services/ai');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const SRS_MAX_MB = 10; // keep <= client_max_body_size in frontend/nginx.conf.template
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: SRS_MAX_MB * 1024 * 1024 } });
+// multer errors (e.g. file too large) would otherwise fall through to Express's
+// default HTML error page - return them as JSON like every other API error.
+const uploadSingle = (field) => (req, res, next) => upload.single(field)(req, res, (err) => {
+  if (!err) return next();
+  const msg = err.code === 'LIMIT_FILE_SIZE' ? `File is too large (max ${SRS_MAX_MB} MB)` : err.message;
+  res.status(400).json({ error: msg });
+});
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
   console.error(e);
   res.status(500).json({ error: e.message });
@@ -116,8 +124,9 @@ router.get('/projects', wrap(async (req, res) => {
   res.json(r.rows);
 }));
 
-router.post('/projects', wrap(async (req, res) => {
-  const f = req.body || {};
+// Creates a project owned by userId, with default phases, milestones and a
+// first module (shared by POST /projects and the SRS-first POST /srs).
+async function createProject(userId, f = {}) {
   const phaseDefaults = [
     ['Analysis', 8], ['Design', 11], ['Design Review', 3], ['Coding', 20],
     ['Code Review', 4], ['Unit Testing', 6], ['System Testing', 24],
@@ -149,7 +158,7 @@ router.post('/projects', wrap(async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [
-        req.userId,
+        userId,
         applicationId,
         f.project_key || `NEW PROJECT ${Date.now().toString().slice(-5)}`,
         f.fp_count || 0,
@@ -190,13 +199,17 @@ router.post('/projects', wrap(async (req, res) => {
     );
 
     await client.query('COMMIT');
-    res.status(201).json(project);
+    return project;
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
   } finally {
     client.release();
   }
+}
+
+router.post('/projects', wrap(async (req, res) => {
+  res.status(201).json(await createProject(req.userId, req.body || {}));
 }));
 
 router.get('/projects/:id', wrap(async (req, res) => {
@@ -376,29 +389,40 @@ const collections = {
 // ---------------- SRS (requirements document) upload + AI extraction ----------------
 // Must stay registered before the generic /projects/:id/:coll route below,
 // otherwise Express matches that catch-all first and this never runs.
-router.post('/projects/:id/srs', upload.single('file'), wrap(async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const name = req.file.originalname || 'srs.txt';
+// Reads the text out of an uploaded SRS file; returns { text } or { error }.
+async function readSrsText(file) {
+  if (!file) return { error: 'No file uploaded' };
+  const name = file.originalname || 'srs.txt';
   const ext = (name.split('.').pop() || '').toLowerCase();
 
   let text;
   if (ext === 'pdf') {
-    text = (await pdfParse(req.file.buffer)).text;
+    try {
+      text = (await pdfParse(file.buffer)).text;
+    } catch (e) {
+      return { error: `Could not read this PDF (${e.message || e}). Try re-saving it as PDF, or upload a .txt/.md export instead.` };
+    }
   } else {
-    text = req.file.buffer.toString('utf8');
+    text = file.buffer.toString('utf8');
   }
-  if (!text || !text.trim()) return res.status(400).json({ error: 'Could not read any text from the uploaded file (supported: .txt, .md, .pdf)' });
+  if (!text || !text.trim()) return { error: 'Could not read any text from the uploaded file (supported: .txt, .md, .pdf)' };
+  return { name, text };
+}
 
+// Stores the SRS text for a project, runs AI extraction and saves the
+// project/analysis/design results. Extraction failures are returned (not
+// thrown) so the caller can let the user continue without AI.
+async function saveSrs(projectId, name, text) {
   const document = (await db.query(
     'INSERT INTO srs_documents (project_id, filename, raw_text) VALUES ($1,$2,$3) RETURNING id, filename, uploaded_at',
-    [req.params.id, name, text]
+    [projectId, name, text]
   )).rows[0];
 
   let extracted;
   try {
     extracted = await extractFromSrs(text);
   } catch (e) {
-    return res.json({ document, extracted: false, error: e.message });
+    return { document, extracted: false, error: e.message };
   }
 
   const p = extracted.project || {};
@@ -411,7 +435,7 @@ router.post('/projects/:id/srs', upload.single('file'), wrap(async (req, res) =>
        hardware_req= COALESCE(NULLIF($5,''), hardware_req),
        life_cycle  = COALESCE(NULLIF($6,''), life_cycle)
      WHERE id=$7`,
-    [p.brief_desc || '', p.scope || '', p.technology || '', p.software_req || '', p.hardware_req || '', p.life_cycle || '', req.params.id]
+    [srsText(p.brief_desc), srsText(p.scope), srsText(p.technology), srsText(p.software_req), srsText(p.hardware_req), srsText(p.life_cycle), projectId]
   );
 
   const a = extracted.analysis || {};
@@ -421,7 +445,7 @@ router.post('/projects/:id/srs', upload.single('file'), wrap(async (req, res) =>
      ON CONFLICT (project_id) DO UPDATE SET
        business_requirements=$2, functional_requirements=$3, non_functional_requirements=$4,
        use_cases=$5, data_entities=$6, updated_at=now()`,
-    [req.params.id, JSON.stringify(a.business_requirements || []), JSON.stringify(a.functional_requirements || []),
+    [projectId, JSON.stringify(a.business_requirements || []), JSON.stringify(a.functional_requirements || []),
       JSON.stringify(a.non_functional_requirements || []), JSON.stringify(a.use_cases || []), JSON.stringify(a.data_entities || [])]
   );
 
@@ -431,12 +455,121 @@ router.post('/projects/:id/srs', upload.single('file'), wrap(async (req, res) =>
      VALUES ($1,$2,$3,$4,$5,$6,now())
      ON CONFLICT (project_id) DO UPDATE SET
        architecture_overview=$2, components=$3, api_endpoints=$4, db_design=$5, sequence_flows=$6, updated_at=now()`,
-    [req.params.id, d.architecture_overview || '', JSON.stringify(d.components || []), JSON.stringify(d.api_endpoints || []),
+    [projectId, d.architecture_overview || '', JSON.stringify(d.components || []), JSON.stringify(d.api_endpoints || []),
       JSON.stringify(d.db_design || []), JSON.stringify(d.sequence_flows || [])]
   );
 
-  const project = (await db.query('SELECT * FROM projects WHERE id=$1', [req.params.id])).rows[0];
-  res.json({ document, extracted: true, project, analysis: a, design: d });
+  await saveWizardData(projectId, extracted.wizard || {});
+
+  const project = (await db.query('SELECT * FROM projects WHERE id=$1', [projectId])).rows[0];
+  return { document, extracted: true, project, analysis: a, design: d, wizard: extracted.wizard || {} };
+}
+
+// Saves the SRS's project-setup data (what the New Project wizard asks for)
+// into the project's own tables, so the wizard opens pre-filled. Never
+// overwrites what the user already entered: text fields are only filled when
+// blank, and a list section only when it has no rows yet.
+// Placeholder values the model sometimes emits instead of leaving a field out.
+const PLACEHOLDER = /^[<\[(]?\s*(unknown|n\/?a|none|not (specified|stated|mentioned|provided|available)|tbd|-+)\s*[>\])]?\.?$/i;
+const srsText = (v) => {
+  const t = v == null ? '' : String(v).trim();
+  return PLACEHOLDER.test(t) ? '' : t;
+};
+
+async function saveWizardData(projectId, w) {
+  const str = srsText;
+  const int = (v) => (Number.isFinite(Number(v)) && v !== '' && v != null ? Math.round(Number(v)) : null);
+
+  const p = w.project || {};
+  const fp = int(p.fp_count_estimate);
+  await db.query(
+    `UPDATE projects SET
+       fp_count = CASE WHEN COALESCE(fp_count, 0) = 0 AND $1::int IS NOT NULL THEN GREATEST($1::int, 10) ELSE fp_count END,
+       quality_objective = COALESCE(NULLIF(quality_objective, ''), NULLIF($2, ''))
+     WHERE id=$3`,
+    [fp, str(p.quality_objective), projectId]
+  );
+
+  const APP_KEYS = ['app_name', 'domain', 'category', 'description', 'acceptance_criteria', 'technology', 'scope', 'life_cycle'];
+  const app = w.application || {};
+  await db.query(
+    `UPDATE applications SET ${APP_KEYS.map((k, i) => `${k} = COALESCE(NULLIF(${k}, ''), NULLIF($${i + 1}, ''), ${k})`).join(', ')}
+     WHERE id = (SELECT application_id FROM projects WHERE id=$${APP_KEYS.length + 1})`,
+    [...APP_KEYS.map((k) => str(app[k])), projectId]
+  );
+
+  const hasRows = async (table, where = '', params = []) =>
+    (await db.query(`SELECT 1 FROM ${table} WHERE project_id=$1 ${where} LIMIT 1`, [projectId, ...params])).rowCount > 0;
+  const insertRows = async (coll, rows) => {
+    const c = collections[coll];
+    for (const row of rows) {
+      const params = c.cols.map((_, i) => `$${i + 2}`).join(',');
+      await db.query(`INSERT INTO ${c.table} (project_id, ${c.cols.join(',')}) VALUES ($1, ${params})`,
+        [projectId, ...c.cols.map((col) => (row[col] === '' || row[col] == null ? null : row[col]))]);
+    }
+  };
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const numbered = (rows) => rows.map((r, i) => ({ sno: i + 1, ...r }));
+
+  const simple = {
+    hardware: arr(w.hardware).filter((r) => str(r.description))
+      .map((r) => ({ description: str(r.description), spec: str(r.spec), quantity: int(r.quantity) })),
+    software: arr(w.software).filter((r) => str(r.description))
+      .map((r) => ({ description: str(r.description), version: str(r.version), installations: int(r.installations) })),
+    environments: arr(w.environments).filter((r) => str(r.env_name))
+      .map((r) => ({ env_name: str(r.env_name), server_path: str(r.server_path), access_type: str(r.access_type) })),
+    docs: arr(w.docs).filter((r) => str(r.name))
+      .map((r) => ({ name: str(r.name), version: str(r.version), copy_type: str(r.copy_type) })),
+    training: arr(w.training).filter((r) => str(r.name))
+      .map((r) => ({ name: str(r.name), train_type: str(r.train_type), participants: str(r.participants) })),
+    goals: arr(w.goals).filter((r) => str(r.metric_name))
+      .map((r) => ({ metric_name: str(r.metric_name), frequency: str(r.frequency), target: str(r.target) }))
+  };
+  for (const [coll, rows] of Object.entries(simple)) {
+    if (rows.length && !(await hasRows(collections[coll].table))) {
+      const withSno = collections[coll].cols.includes('sno') ? numbered(rows) : rows;
+      await insertRows(coll, withSno);
+    }
+  }
+
+  for (const [key, kind] of [['constraints', 'constraint'], ['dependencies', 'dependency'], ['assumptions', 'assumption'], ['risks', 'risk']]) {
+    const rows = arr(w[key]).map(str).filter(Boolean);
+    if (rows.length && !(await hasRows('list_items', 'AND kind=$2', [kind]))) {
+      await insertRows('lists', rows.map((description, i) => ({ kind, sno: i + 1, description })));
+    }
+  }
+
+  // modules: POST /projects seeds one placeholder row (named after the
+  // project key, everything else blank) - replace it, but keep real rows.
+  const modules = arr(w.modules).filter((r) => str(r.name))
+    .map((r, i) => ({ sno: i + 1, name: str(r.name), description: str(r.description) }));
+  if (modules.length) {
+    await db.query(
+      `DELETE FROM modules m USING projects p
+       WHERE m.project_id=$1 AND p.id=m.project_id AND m.name=p.project_key
+         AND COALESCE(m.description,'')='' AND COALESCE(m.dev_res,'')='' AND COALESCE(m.tl_res,'')='' AND COALESCE(m.testers,'')=''`,
+      [projectId]
+    );
+    if (!(await hasRows('modules'))) await insertRows('modules', modules);
+  }
+}
+
+router.post('/projects/:id/srs', uploadSingle('file'), wrap(async (req, res) => {
+  const { name, text, error } = await readSrsText(req.file);
+  if (error) return res.status(400).json({ error });
+  res.json(await saveSrs(req.params.id, name, text));
+}));
+
+// First screen after login: create a new project straight from an SRS
+// upload. The file is read before the project is created, so an unreadable
+// file doesn't leave an empty project behind.
+router.post('/srs', uploadSingle('file'), wrap(async (req, res) => {
+  const { name, text, error } = await readSrsText(req.file);
+  if (error) return res.status(400).json({ error });
+  const projectKey = String(req.body?.project_key || '').trim() || name.replace(/\.[^.]+$/, '').slice(0, 40);
+  const created = await createProject(req.userId, { project_key: projectKey });
+  const result = await saveSrs(created.id, name, text);
+  res.status(201).json({ ...result, project: result.project || created });
 }));
 
 router.get('/projects/:id/srs', wrap(async (req, res) => {

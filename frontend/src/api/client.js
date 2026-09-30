@@ -2,6 +2,9 @@
 let authToken = localStorage.getItem('kag_token') || null;
 
 async function readError(r, fallback) {
+  if (r.status === 401 && API.onUnauthorized) API.onUnauthorized();
+  // a proxy (Nginx) rejects oversized bodies with an HTML 413 page, not JSON
+  if (r.status === 413) return 'File is too large for the server to accept.';
   try {
     const body = await r.json();
     return body?.error || fallback;
@@ -12,6 +15,10 @@ async function readError(r, fallback) {
 
 const API = {
   base: '/api',
+  // set by AuthProvider - called when the backend rejects the session token
+  // (expired, or JWT_SECRET changed) so the app returns to /login instead of
+  // failing every request
+  onUnauthorized: null,
 
   setToken(token) {
     authToken = token;

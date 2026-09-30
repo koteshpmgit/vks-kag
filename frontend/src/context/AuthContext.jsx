@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import API from '../api/client.js';
 
 const AuthContext = createContext(null);
@@ -39,6 +39,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('kag_user');
     setUser(null);
   }, []);
+
+  useEffect(() => {
+    API.onUnauthorized = logout;
+    return () => { API.onUnauthorized = null; };
+  }, [logout]);
 
   return (
     <AuthContext.Provider value={{ user, login, signup, logout }}>

@@ -102,3 +102,5 @@
   .wizard-body { flex-direction: column; }
   .wizard-steplist { width: 100%; max-height: 160px; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+.wizard-prefilled { font-size: 12px; font-weight: 500; color: var(--muted); }

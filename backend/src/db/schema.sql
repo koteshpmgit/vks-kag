@@ -1,6 +1,7 @@
 -- Key Artifact Generator - PostgreSQL schema
 -- Mirrors the data model of "Key Artifact Generator-V1.0.xls" (Data Sheet columns B..CM)
 
+DROP TABLE IF EXISTS timesheet_entries CASCADE;
 DROP TABLE IF EXISTS srs_design CASCADE;
 DROP TABLE IF EXISTS srs_analysis CASCADE;
 DROP TABLE IF EXISTS srs_documents CASCADE;
