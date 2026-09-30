@@ -84,7 +84,8 @@ const EXTRACT_TOOL = {
             type: 'object',
             properties: {
               fp_count_estimate: { type: 'integer', description: 'Rough function point estimate for the whole scope (at least 10)' },
-              quality_objective: { type: 'string', description: 'Quality objectives / acceptance targets stated in the document' }
+              quality_objective: { type: 'string', description: 'Quality objectives / acceptance targets stated in the document' },
+              planned_start_date: { type: 'string', description: 'Planned project start date as YYYY-MM-DD - only if the document states one' }
             }
           },
           application: {

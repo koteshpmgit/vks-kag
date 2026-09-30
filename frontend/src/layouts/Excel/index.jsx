@@ -71,10 +71,19 @@ export default function ExcelLayout() {
       if (ans !== 'OK') return;
     }
     setStatus('Generating WBS…');
-    const r = await API.post(`/projects/${projectId}/wbs/generate`);
+    let r;
+    try {
+      r = await API.post(`/projects/${projectId}/wbs/generate`);
+    } catch (e) {
+      setStatus('Ready');
+      await msgBox(e.message, { title: 'WBS not generated' });
+      return;
+    }
     await reload();
     setActive('WBS For JIRA');
-    await msgBox(`WBS genarated for the project - ${proj}-WBS (${r.generated} tasks)`);
+    await msgBox(`WBS genarated for the project - ${proj}-WBS (${r.generated} tasks)` + (r.seededTeam ? `
+
+A default team plan was added to the HR plan (people 'To be assigned') - assign real resources there and re-generate.` : ''));
     setStatus('Ready');
   };
 

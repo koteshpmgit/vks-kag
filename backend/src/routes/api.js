@@ -4,7 +4,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const db = require('../db');
 const { computeProject } = require('../services/calc');
-const { generateWbs } = require('../services/wbs');
+const { generateWbs, seedDefaultHrPlan } = require('../services/wbs');
 const { rowsToXls, rowsToCsv, rowsToHtml, rowsToPdf } = require('../services/exporter');
 const { buildArtifactRows } = require('../services/artifacts');
 const { generateTimesheet, getTimesheet, timesheetRows, dayNameFor } = require('../services/timesheet');
@@ -20,9 +20,11 @@ const uploadSingle = (field) => (req, res, next) => upload.single(field)(req, re
   const msg = err.code === 'LIMIT_FILE_SIZE' ? `File is too large (max ${SRS_MAX_MB} MB)` : err.message;
   res.status(400).json({ error: msg });
 });
+// errors carrying a .status (e.g. WbsError) are the user's to fix - return
+// them as-is instead of a 500
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
-  console.error(e);
-  res.status(500).json({ error: e.message });
+  if (!e.status) console.error(e);
+  res.status(e.status || 500).json({ error: e.message });
 });
 
 // :id / :rowId are always numeric primary keys - reject non-numeric values with a
@@ -482,12 +484,15 @@ async function saveWizardData(projectId, w) {
 
   const p = w.project || {};
   const fp = int(p.fp_count_estimate);
+  const start = /^\d{4}-\d{2}-\d{2}$/.test(str(p.planned_start_date)) && !Number.isNaN(Date.parse(p.planned_start_date))
+    ? p.planned_start_date : null;
   await db.query(
     `UPDATE projects SET
        fp_count = CASE WHEN COALESCE(fp_count, 0) = 0 AND $1::int IS NOT NULL THEN GREATEST($1::int, 10) ELSE fp_count END,
-       quality_objective = COALESCE(NULLIF(quality_objective, ''), NULLIF($2, ''))
-     WHERE id=$3`,
-    [fp, str(p.quality_objective), projectId]
+       quality_objective = COALESCE(NULLIF(quality_objective, ''), NULLIF($2, '')),
+       start_date = COALESCE(start_date, $3::date)
+     WHERE id=$4`,
+    [fp, str(p.quality_objective), start, projectId]
   );
 
   const APP_KEYS = ['app_name', 'domain', 'category', 'description', 'acceptance_criteria', 'technology', 'scope', 'life_cycle'];
@@ -552,6 +557,10 @@ async function saveWizardData(projectId, w) {
     );
     if (!(await hasRows('modules'))) await insertRows('modules', modules);
   }
+
+  // an SRS never names the team, but the WBS is generated per HR-plan role -
+  // start the project with the standard role-wise plan (people "To be assigned")
+  await seedDefaultHrPlan(projectId);
 }
 
 router.post('/projects/:id/srs', uploadSingle('file'), wrap(async (req, res) => {

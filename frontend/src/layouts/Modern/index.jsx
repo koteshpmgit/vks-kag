@@ -3,6 +3,7 @@ import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext.jsx';
 import { SECTION_META } from '../../data/sections.jsx';
 import ArtifactModal from '../../components/common/ArtifactModal.jsx';
+import ProjectMessages from '../../components/common/ProjectMessages.jsx';
 import Header from './Header.jsx';
 import Sidebar from './Sidebar.jsx';
 import Content from './Content.jsx';
@@ -37,6 +38,11 @@ function ModernBody() {
           <Sidebar activeGroup={activeGroup} activeSection={activeSection} onSelect={select} onOpenArtifact={setArtifact} />
         </aside>
         <main id="content">
+          <ProjectMessages
+            data={data}
+            onFix={(t) => (t === 'wbs' ? setArtifact({ id: 'wbsjira', name: 'WBS For JIRA' }) : select(SECTION_META[t].group, t))}
+            canFix={(t) => t === 'wbs' || !!SECTION_META[t]}
+          />
           <div id="contentHead">
             <h2>{SECTION_META[activeSection]?.title}</h2>
             <span id="contentHint">

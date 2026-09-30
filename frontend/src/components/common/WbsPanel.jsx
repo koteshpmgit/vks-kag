@@ -27,9 +27,16 @@ export default function WbsPanel() {
       const ans = await confirmDialog('Re-generate the WBS? Existing tasks will be replaced.', { title: 'Confirm WBS re-generation', buttons: ['Re-generate', 'Cancel'] });
       if (ans !== 'Re-generate') return;
     }
-    const r = await API.post(`/projects/${projectId}/wbs/generate`);
+    let r;
+    try {
+      r = await API.post(`/projects/${projectId}/wbs/generate`);
+    } catch (e) {
+      await msgBox(e.message, { title: 'WBS not generated' });
+      return;
+    }
     await reload();
-    toast(`WBS generated (${r.generated} tasks)`);
+    if (!r.seededTeam) toast(`WBS generated (${r.generated} tasks)`);
+    else await msgBox(`WBS generated (${r.generated} tasks). A default team plan was added to the HR plan (people 'To be assigned') - assign real resources there and re-generate.`, { title: 'Default team added' });
   };
 
   const generateTimesheet = async () => {

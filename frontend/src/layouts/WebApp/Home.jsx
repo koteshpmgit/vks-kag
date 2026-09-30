@@ -2,6 +2,7 @@ import React from 'react';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { GROUPS, SECTION_META } from '../../data/sections.jsx';
 import { sectionCompletion, overallCompletion } from '../../data/completion.js';
+import ProjectMessages from '../../components/common/ProjectMessages.jsx';
 
 export default function Home({ onOpenSection }) {
   const { data } = useProjectData();
@@ -21,6 +22,12 @@ export default function Home({ onOpenSection }) {
           <div><b>{wbs.length}</b><span>WBS Tasks</span></div>
         </div>
       </div>
+
+      <ProjectMessages
+        data={data}
+        onFix={(sid) => onOpenSection(SECTION_META[sid].group, sid)}
+        canFix={(t) => !!SECTION_META[t]}
+      />
 
       {GROUPS.map((g) => (
         <div key={g.id} className="wa-home-section">

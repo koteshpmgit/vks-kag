@@ -35,6 +35,15 @@ Analysis/Design documents.
     constraints, dependencies, assumptions, risks, training, modules and goals.
 
   Without `ANTHROPIC_API_KEY` the upload still works and the user can continue manually.
+- **Messages panel** — on the project home (Analysis & Design), the classic editor's Home
+  and at the top of the Modern layout, a *Messages* section lists what's missing and how to fix it, each with a button
+  that jumps to the right wizard step or section:
+  - **Action needed** (blocks output): no Start Date, FP Count of 0.
+  - **Recommended**: no HR plan, or placeholder `TBD-…` people in it; no SRS analysed;
+    empty application details.
+  - **Tip**: WBS not generated yet; empty optional sections, with the artifacts each one feeds.
+
+  Logic lives in `frontend/src/data/projectMessages.js`.
 - **Multiple layouts** over the same data:
 
   | Route | Layout |
@@ -69,9 +78,16 @@ Login ─▶ Upload Requirements Document ─▶ Review ─▶ Open New Project 
   risks, modules, …).
 - **Nothing you entered is overwritten:** text fields are only filled when blank, and a list
   section only when it has no rows yet. Re-uploading an SRS to the same project is safe.
-- **What the SRS can't provide:** the start date and organisational data (HR plan, process
-  planning, decision analysis, kick-off agenda). The wizard's "at least 2 rows per list
-  step" rule still applies to those steps.
+- **Team plan for the WBS:** an SRS never names the team, but the WBS is generated per
+  HR-plan role. Each SRS project therefore starts with a standard role-wise HR plan
+  (PO, ODO, TL, 2 × DEV, TSTL, TSTE, PQAO, with placeholder people `TBD-<ROLE>n` marked
+  "To be assigned"). Edit the shares and assign real people, then re-generate. A project with
+  no HR plan gets the same plan when you click **Generate WBS**.
+- **What the SRS can't provide:** usually the start date (it's picked up when the SRS states
+  one), and organisational data like process planning, decision analysis and the kick-off
+  agenda. The wizard's "at least 2 rows per list step" rule still applies to those steps.
+- **Generate WBS needs** a start date and an FP count above 0. If either is missing, it
+  says so and leaves any existing WBS untouched.
 - **Timing:** extraction usually takes 30–90 seconds. Nginx waits up to 5 minutes for it.
 - **If extraction fails** (for example a temporary Anthropic API error), the project is
   already created: **Try Again** retries on the same project, or **Continue without AI**.
@@ -353,6 +369,8 @@ training, process, environments, dar, agenda, modules`.
 | "Failed to start — Invalid or expired session" | The login token in the browser is no longer valid (expired, `JWT_SECRET` changed, or the database was reset) | The app returns to `/login` automatically. If an old cached copy of the app is still running, press **Ctrl+Shift+R** once. After `docker compose down -v`, **sign up again**: accounts were wiped. |
 | SRS upload fails with "File is too large" / `413` | File over 10 MB | Upload a smaller file, or raise both `client_max_body_size` (Nginx) and `SRS_MAX_MB` (backend) |
 | SRS upload fails with `502` / `504` | The backend took longer than Nginx waits | Nginx waits 300 s (`proxy_read_timeout`); rebuild the frontend image if yours predates this. The project may still have been created, so check the project list before re-uploading. |
+| Generate WBS: "Cannot generate the WBS yet…" | The project has no Start Date and/or its FP Count is 0 | Set them in the wizard (Create Project) or Data Sheet (Projects Summary), then generate again |
+| WBS tasks are assigned to `TBD-DEV1` etc. | The default team plan was used | Assign real resources in the HR plan and re-generate |
 | "ANTHROPIC_API_KEY not configured" | Key not passed to the backend container | Put it in the repo-root `.env` and run `docker compose up -d backend` |
 | "Could not read this PDF" | Scanned/image-only or unusual PDF | Re-save as PDF, or upload a `.txt`/`.md` export |
 | `npm run db:setup` → `ECONNREFUSED ...:5432` | No local PostgreSQL; the Docker database listens on **5433** | With Docker you don't need `db:setup`: the `db` container initializes itself |

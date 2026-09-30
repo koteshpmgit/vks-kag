@@ -30,6 +30,9 @@ export default function OnboardingLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [phase, setPhase] = useState('start');
+  // where the pre-filled wizard opens, and which phase it returns to
+  const [wizardAt, setWizardAt] = useState({ step: null, back: 'review' });
+  const openWizard = (step, back) => { setWizardAt({ step, back }); setPhase('wizardEdit'); };
 
   // project created from the start screen's SRS upload
   const afterStart = async (id, extracted) => {
@@ -85,10 +88,10 @@ export default function OnboardingLayout() {
             data={data}
             onNext={() => setPhase('documents')}
             onBack={() => setPhase('srs')}
-            onOpenWizard={() => setPhase('wizardEdit')}
+            onOpenWizard={() => openWizard(null, 'review')}
           />
         )}
-        {phase === 'documents' && <DocumentsStep onSwitchProject={() => setPhase('start')} />}
+        {phase === 'documents' && <DocumentsStep onSwitchProject={() => setPhase('start')} onOpenWizard={(step) => openWizard(step, 'documents')} />}
       </main>
 
       {phase === 'wizard' && (
@@ -99,7 +102,7 @@ export default function OnboardingLayout() {
       {phase === 'wizardEdit' && data && (
         // Same wizard, opened on the project just created from the SRS and
         // pre-filled with what was extracted from it; saves in place.
-        <Wizard projectId={data.project.id} onClose={() => setPhase('review')} onCreated={() => setPhase('documents')} />
+        <Wizard projectId={data.project.id} initialStep={wizardAt.step} onClose={() => setPhase(wizardAt.back)} onCreated={() => setPhase('documents')} />
       )}
     </div>
   );

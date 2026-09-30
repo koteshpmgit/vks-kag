@@ -3,10 +3,11 @@ import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { ARTIFACTS } from '../../components/artifacts/index.js';
 import ArtifactModal from '../../components/common/ArtifactModal.jsx';
 import SrsUploadStep from './SrsUploadStep.jsx';
+import ProjectMessages from '../../components/common/ProjectMessages.jsx';
 
 const FEATURED_IDS = ['analysisdocument', 'designdocument'];
 
-export default function DocumentsStep({ onSwitchProject }) {
+export default function DocumentsStep({ onSwitchProject, onOpenWizard }) {
   const { projectId, data, reload } = useProjectData();
   const [artifact, setArtifact] = useState(null);
   const [showMore, setShowMore] = useState(false);
@@ -14,7 +15,14 @@ export default function DocumentsStep({ onSwitchProject }) {
 
   const featured = ARTIFACTS.filter((a) => FEATURED_IDS.includes(a.id));
   const rest = ARTIFACTS.filter((a) => !FEATURED_IDS.includes(a.id));
-  const hasAnalysis = !!(data?.analysis || data?.design);
+
+  // Messages panel fixes: SRS upload and the WBS open here; data sections open
+  // the pre-filled wizard on that step (project fields live on its first step).
+  const fixMessage = (target) => {
+    if (target === 'srs') setShowUpload(true);
+    else if (target === 'wbs') setArtifact(ARTIFACTS.find((a) => a.id === 'wbsjira'));
+    else onOpenWizard?.(target === 'projSummary' ? '__create__' : target);
+  };
 
   if (showUpload) {
     return (
@@ -32,12 +40,7 @@ export default function DocumentsStep({ onSwitchProject }) {
       <h2>Analysis &amp; Design</h2>
       <p className="ob-hint">{data?.project?.project_key} — generate, preview and download your project artifacts.</p>
 
-      {!hasAnalysis && (
-        <div className="ob-error">
-          <p>No SRS (requirements) document has been analyzed for this project yet.</p>
-          <p><button type="button" className="btn btn-accent btn-sm" onClick={() => setShowUpload(true)}>Upload Requirements Document</button></p>
-        </div>
-      )}
+      <ProjectMessages data={data} onFix={fixMessage} canFix={(t) => t === 'srs' || t === 'wbs' || !!onOpenWizard} />
 
       <div className="ob-artifact-cards">
         {featured.map((a) => (

@@ -1,0 +1,36 @@
+/* Project "Messages" panel (components/common/ProjectMessages.jsx) */
+.pm-panel { border: 1px solid var(--border); border-radius: 10px; background: var(--card, #fff); margin: 0 0 18px; overflow: hidden; }
+.pm-panel.pm-ok { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; }
+.pm-panel.pm-ok b { font-size: 13px; color: var(--text); }
+.pm-panel.pm-ok p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+
+.pm-head { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 0; background: transparent; cursor: pointer; text-align: left; color: var(--text); font: inherit; }
+.pm-head b { font-size: 13.5px; }
+.pm-counts { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.pm-count { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.pm-count.pm-error { background: color-mix(in srgb, var(--danger, #dc2626) 14%, transparent); color: var(--danger, #dc2626); }
+.pm-count.pm-warning { background: color-mix(in srgb, var(--warn, #d97706) 16%, transparent); color: var(--warn, #b45309); }
+.pm-count.pm-info { background: color-mix(in srgb, var(--accent, #2563eb) 12%, transparent); color: var(--accent, #2563eb); }
+.pm-toggle { font-size: 12px; color: var(--muted); }
+
+.pm-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.pm-item { display: flex; gap: 10px; align-items: flex-start; padding: 11px 14px; border-left: 3px solid transparent; }
+.pm-item + .pm-item { border-top: 1px solid var(--border); }
+.pm-item.pm-error { border-left-color: var(--danger, #dc2626); }
+.pm-item.pm-warning { border-left-color: var(--warn, #d97706); }
+.pm-item.pm-info { border-left-color: var(--accent, #2563eb); }
+.pm-icon { flex-shrink: 0; font-size: 15px; line-height: 1.3; }
+.pm-body { flex: 1; min-width: 0; }
+.pm-body b { font-size: 13px; color: var(--text); }
+.pm-body p { margin: 2px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.pm-fix { flex-shrink: 0; white-space: nowrap; }
+
+.pm-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pm-chip { font: inherit; font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--text); }
+button.pm-chip { cursor: pointer; }
+button.pm-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+@media (max-width: 600px) {
+  .pm-item { flex-wrap: wrap; }
+  .pm-fix { margin-left: 25px; }
+}

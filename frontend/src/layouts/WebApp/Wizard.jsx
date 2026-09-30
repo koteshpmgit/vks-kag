@@ -62,13 +62,15 @@ function draftFromProject(data) {
 }
 
 // projectId set = complete an existing project (pre-filled, saves in place);
-// otherwise create a new one from a blank draft.
-export default function Wizard({ onClose, onCreated, projectId = null }) {
+// otherwise create a new one from a blank draft. initialStep = a step id to
+// open on (e.g. from a Messages panel "fix" button).
+export default function Wizard({ onClose, onCreated, projectId = null, initialStep = null }) {
   const { data, reload, reloadProjects, switchProject } = useProjectData();
   const { toast, confirmDialog } = useDialogs();
   const editing = projectId != null && data?.project?.id === projectId;
-  const [stepIdx, setStepIdx] = useState(0);
-  const [visited, setVisited] = useState(new Set([0]));
+  const startIdx = Math.max(0, STEPS.findIndex((s) => s.id === initialStep));
+  const [stepIdx, setStepIdx] = useState(startIdx);
+  const [visited, setVisited] = useState(new Set([0, startIdx]));
   const [errors, setErrors] = useState([]);
   const [original] = useState(() => (editing ? draftFromProject(data) : null));
   const [draft, setDraftState] = useState(() => original || ({
