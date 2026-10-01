@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import API from '../../api/client.js';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
+import { useDialogs } from '../../components/common/Dialogs.jsx';
 
 const MAX_MB = 10; // matches the backend's SRS upload limit
 
@@ -9,7 +10,30 @@ const keyFromFilename = (name) => name.replace(/\.[^.]+$/, '').slice(0, 40);
 // First screen after login: upload an SRS to start a new project (the backend
 // creates the project and fills it from the document), or open an existing one.
 export default function StartStep({ onCreated, onSelect, onManual }) {
-  const { projects } = useProjectData();
+  const { projects, restoreProject, deleteProject } = useProjectData();
+  const { confirmDialog, msgBox, toast } = useDialogs();
+  const [archived, setArchived] = useState([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const loadArchived = () => API.get('/projects?archived=1').then(setArchived).catch(() => setArchived([]));
+  React.useEffect(() => { loadArchived(); }, [projects.length]);
+
+  const restore = async (p) => {
+    try {
+      await restoreProject(p.id);
+      toast(`${p.project_key} restored`);
+      loadArchived();
+    } catch (e) { await msgBox(e.message, { title: 'Restore failed' }); }
+  };
+  const removeArchived = async (p) => {
+    const ans = await confirmDialog(`Permanently delete ${p.project_key}?\n\nThe project and all its data are removed. This cannot be undone.`,
+      { title: 'Delete project', buttons: ['Delete permanently', 'Cancel'] });
+    if (ans !== 'Delete permanently') return;
+    try {
+      await deleteProject(p.id);
+      toast(`${p.project_key} deleted`);
+      loadArchived();
+    } catch (e) { await msgBox(e.message, { title: 'Delete failed' }); }
+  };
   const [file, setFile] = useState(null);
   const [projectKey, setProjectKey] = useState('');
   const [keyEdited, setKeyEdited] = useState(false);
@@ -109,6 +133,24 @@ export default function StartStep({ onCreated, onSelect, onManual }) {
             ))}
           </div>
         </>
+      )}
+      {archived.length > 0 && !createdId && (
+        <div className="ob-archived">
+          <button type="button" className="ob-more-toggle" onClick={() => setShowArchived((v) => !v)} aria-expanded={showArchived}>
+            {showArchived ? 'Hide' : 'Show'} archived projects ({archived.length})
+          </button>
+          {showArchived && (
+            <ul className="ob-archived-list">
+              {archived.map((p) => (
+                <li key={p.id}>
+                  <span><b>{p.project_key}</b><small>archived {String(p.archived_at).slice(0, 10)}</small></span>
+                  <button type="button" className="btn btn-light btn-sm" onClick={() => restore(p)}>Restore</button>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeArchived(p)}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

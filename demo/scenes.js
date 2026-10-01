@@ -1,5 +1,5 @@
 // Key Artifact Generator — Interactive Demo content.
-// Shared in-memory "demo data store" + reusable UI builders, then the 13
+// Shared in-memory "demo data store" + reusable UI builders, then the 14
 // scenes (render + optional autoplay script) consumed by app.js.
 (function () {
   'use strict';
@@ -642,7 +642,7 @@
   };
 })();
 
-// ---------------- The 13 scenes ----------------
+// ---------------- The 14 scenes ----------------
 (function () {
   'use strict';
   const K = window.__KAG_DEMO_INTERNALS__;
@@ -653,6 +653,60 @@
     LAYOUTS, renderLayoutsStage } = K2;
 
   const root_ = (stage) => stage.querySelector('.scene');
+
+  // ---------- Archive & Delete chapter ----------
+  const archivedItem = (k) => `<li data-arch="${k}"><span><b>${k}</b><small>archived today</small></span><button type="button" class="btn sm" data-restore="${k}">Restore</button><button type="button" class="btn sm pm-danger" data-delete="${k}">Delete</button></li>`;
+  function refreshManage(root) {
+    const P = STORE.projects;
+    root.querySelector('#activeGrid').innerHTML = P.active.map((k) => `<div class="art-card" data-key="${k}"><h3>${k}</h3><p>Project</p></div>`).join('') || '<p class="note">No active projects.</p>';
+    root.querySelector('#archList').innerHTML = P.archived.map(archivedItem).join('') || '<li class="note">None</li>';
+    root.querySelector('#archCount').textContent = P.archived.length;
+    wireArchivedList(root);
+  }
+  function doArchive(root, key) {
+    const P = STORE.projects;
+    P.active = P.active.filter((k) => k !== key);
+    if (!P.archived.includes(key)) P.archived.unshift(key);
+    refreshManage(root); Engine.toast(key + ' archived');
+  }
+  function doRestore(root, key) {
+    const P = STORE.projects;
+    P.archived = P.archived.filter((k) => k !== key);
+    if (!P.active.includes(key)) P.active.push(key);
+    refreshManage(root); Engine.toast(key + ' restored');
+  }
+  function doDelete(root, key) {
+    const P = STORE.projects;
+    P.active = P.active.filter((k) => k !== key); P.archived = P.archived.filter((k) => k !== key);
+    refreshManage(root); Engine.toast(key + ' deleted');
+  }
+  // mode 'archive' | 'delete'; returns the overlay (the autoplay script clicks it)
+  function manageConfirm(root, mode, key = 'PAYROLL-2.0') {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = mode === 'archive'
+      ? `<div class="modal-box"><div class="modal-head"><h3>Archive project</h3><button type="button" class="modal-close">&times;</button></div><div class="modal-body"><p style="margin-top:0"><b>Archive ${key}?</b></p><p>It is hidden from your project lists, but all its data is kept — restore it any time from “Archived projects” on the start screen.</p></div><div class="modal-foot"><button type="button" class="btn accent" data-act="archive">Archive</button><button type="button" class="btn" data-act="cancel">Cancel</button></div></div>`
+      : `<div class="modal-box"><div class="modal-head"><h3>Delete project</h3><button type="button" class="modal-close">&times;</button></div><div class="modal-body"><p style="margin-top:0"><b>Permanently delete ${key}?</b></p><p>This removes the project and everything in it — the uploaded SRS, Analysis &amp; Design, Data Sheet sections, HR plan, WBS and timesheet. It cannot be undone.</p><p>To keep the data but hide the project, archive it instead.</p></div><div class="modal-foot"><button type="button" class="btn pm-danger" data-act="delete">Delete permanently</button><button type="button" class="btn" data-act="archive">Archive instead</button><button type="button" class="btn" data-act="cancel">Cancel</button></div></div>`;
+    root.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.modal-close').addEventListener('click', close);
+    overlay.querySelector('[data-act="cancel"]').addEventListener('click', close);
+    overlay.querySelector('[data-act="archive"]').addEventListener('click', () => { close(); doArchive(root, key); });
+    const del = overlay.querySelector('[data-act="delete"]');
+    if (del) del.addEventListener('click', () => { close(); doDelete(root, key); });
+    return overlay;
+  }
+  function wireArchivedList(root) {
+    root.querySelectorAll('#archList [data-restore]').forEach((b) => b.addEventListener('click', () => doRestore(root, b.dataset.restore)));
+    root.querySelectorAll('#archList [data-delete]').forEach((b) => b.addEventListener('click', () => manageConfirm(root, 'delete', b.dataset.delete)));
+  }
+  function wireManage(root) {
+    root.querySelector('#archBtn').addEventListener('click', () => { if (STORE.projects.active.includes('PAYROLL-2.0')) manageConfirm(root, 'archive'); else Engine.toast('PAYROLL-2.0 is already archived — restore it below.'); });
+    root.querySelector('#delBtn').addEventListener('click', () => { if (STORE.projects.active.concat(STORE.projects.archived).includes('PAYROLL-2.0')) manageConfirm(root, 'delete'); else Engine.toast('PAYROLL-2.0 was deleted — restart the demo to bring it back.'); });
+    root.querySelector('#switchBtn').addEventListener('click', () => Engine.toast('Back to the start screen to pick another project.'));
+    wireArchivedList(root);
+  }
+
 
   // Generate WBS as the app does: errors block (message), warnings ask first.
   // Returns the confirm overlay when one was opened (the autoplay script clicks it).
@@ -679,6 +733,7 @@
     'Claude extracts Analysis & Design plus the wizard data (app details, hardware, software, risks, modules…)',
     'Pre-filled New Project wizard — review, complete and save in place',
     'Messages section — flags missing details, with one-click fixes',
+    'Archive (restorable) or permanently delete a project, right before Switch Project',
     'Resource loading check before generating the WBS — blocks over-allocation, flags overloads',
     'Live effort, schedule & FTE calculation engine', 'Data Sheet CRUD across 4 groups, 24 sections',
     'One-click WBS generation for JIRA import', '12 auto-assembled key artifacts',
@@ -908,6 +963,47 @@
           E.setCaption('Everything the WBS needs is in place — “Generate WBS” jumps straight to it (see the Generate chapter).', 'GUIDE');
           await E.wait(900);
         }
+      }
+    },
+    {
+      id: 'manage', group: 'SRS-First Onboarding', icon: '🗃️', title: 'Archive & Delete Projects',
+      blurb: 'Archive a project to hide it (restorable any time), or delete it permanently — right before Switch Project.',
+      render(root) {
+        if (!STORE.projects) STORE.projects = { active: [STORE.project.project_key, 'GICPI-V1110', 'PAYROLL-2.0'], archived: ['LEGACY-HR'] };
+        const P = STORE.projects;
+        root.innerHTML = `<h1>Archive &amp; Delete Projects</h1><p class="lead">On the project home, <b>Archive project</b> and <b>Delete project</b> sit right before <b>Switch Project</b>. Archiving hides a project from every project list but keeps all its data — restore it from <b>Archived projects</b> on the start screen. Deleting is permanent and removes everything; its confirmation offers <b>Archive instead</b>.</p>` +
+          `<div class="device" style="max-width:720px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Analysis &amp; Design</div></div>` +
+          `<div class="device-body"><div style="font-weight:700;font-size:16px">Analysis &amp; Design</div><p class="note" style="margin:2px 0 12px">PAYROLL-2.0 — generate, preview and download your project artifacts.</p>` +
+          `<div class="pm-actions"><button type="button" class="btn sm" id="archBtn">🗃️ Archive project</button><button type="button" class="btn sm pm-danger" id="delBtn">🗑 Delete project</button><span style="flex:1"></span><button type="button" class="btn sm" id="switchBtn">← Switch Project</button></div></div></div>` +
+          `<div class="device" style="max-width:720px;margin-top:14px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — start screen</div></div>` +
+          `<div class="device-body"><div style="font-weight:700;margin-bottom:8px">Or open an existing project</div><div class="card-grid" id="activeGrid">${P.active.map((k) => `<div class="art-card" data-key="${k}"><h3>${k}</h3><p>Project</p></div>`).join('')}</div>` +
+          `<div style="font-weight:700;margin:16px 0 8px">Archived projects (<span id="archCount">${P.archived.length}</span>)</div><ul class="arch-list" id="archList">${P.archived.map((k) => archivedItem(k)).join('')}</ul></div></div>`;
+        wireManage(root);
+      },
+      async script(E, stage) {
+        const root = root_(stage);
+        const P = STORE.projects;
+        E.setCaption('Archive and Delete sit right before Switch Project on the project home.', 'GUIDE');
+        await E.pulse(root.querySelector('.pm-actions'), 900);
+        await E.clickFx(root.querySelector('#archBtn'));
+        let ov = manageConfirm(root, 'archive');
+        E.setCaption('Archiving hides PAYROLL-2.0 from the lists — all its data is kept.', 'GUIDE');
+        await E.wait(1300);
+        await E.clickFx(ov.querySelector('[data-act="archive"]'));
+        ov.remove(); doArchive(root, 'PAYROLL-2.0');
+        await E.pulse(root.querySelector('#archList'), 900);
+        E.setCaption('It now appears under Archived projects — Restore brings it straight back.', 'GUIDE');
+        const restore = root.querySelector('#archList [data-restore="PAYROLL-2.0"]');
+        if (restore) { await E.clickFx(restore); doRestore(root, 'PAYROLL-2.0'); }
+        await E.pulse(root.querySelector('#activeGrid'), 700);
+        await E.clickFx(root.querySelector('#delBtn'));
+        ov = manageConfirm(root, 'delete');
+        E.setCaption('Delete is permanent — the dialog says what goes and offers “Archive instead”.', 'GUIDE');
+        await E.wait(1800);
+        await E.clickFx(ov.querySelector('[data-act="cancel"]'));
+        ov.remove();
+        E.setCaption('Cancelled — nothing deleted. Only the project’s owner can archive or delete it.', 'GUIDE');
+        await E.wait(900);
       }
     },
     {

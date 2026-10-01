@@ -144,3 +144,12 @@
 .ob-wizard-cta p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 .ob-wizard-cta .btn { flex-shrink: 0; }
 @media (max-width: 600px) { .ob-wizard-cta { flex-direction: column; align-items: stretch; } }
+
+/* Archived projects (start screen) */
+.ob-archived { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.ob-archived-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.ob-archived-list li { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: 10px; }
+.ob-archived-list li span { flex: 1; display: flex; flex-direction: column; }
+.ob-archived-list small { font-size: 11px; color: var(--muted); }
+.ob-actions .btn-danger { margin-right: auto; }
+@media (max-width: 600px) { .ob-actions { flex-wrap: wrap; } }

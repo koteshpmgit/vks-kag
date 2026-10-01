@@ -77,6 +77,7 @@ CREATE TABLE resources (
 CREATE TABLE projects (
     id                  SERIAL PRIMARY KEY,
     owner_user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    archived_at         TIMESTAMPTZ,                -- set = archived (hidden from project lists, restorable)
     application_id      INTEGER REFERENCES applications(id) ON DELETE SET NULL,
     project_key         TEXT NOT NULL,              -- ProjectName    S5
     fp_count            NUMERIC DEFAULT 0,          -- ProjectFpSize  T5

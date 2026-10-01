@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS srs_documents (
     id           SERIAL PRIMARY KEY,
@@ -66,7 +67,7 @@ async function main() {
   });
   await client.connect();
   await client.query(MIGRATION_SQL);
-  console.log('Migration applied: users, owner_user_id, srs_documents, srs_analysis, srs_design.');
+  console.log('Migration applied: users, owner_user_id, archived_at, srs_documents, srs_analysis, srs_design.');
 
   if (grantTo) {
     await client.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${grantTo}"`);

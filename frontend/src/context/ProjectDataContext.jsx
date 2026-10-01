@@ -98,12 +98,41 @@ export function ProjectDataProvider({ children }) {
     return list;
   }, []);
 
+  // After a project leaves the active list (archived or deleted): if it was the
+  // open one, move to the first remaining project - or to none.
+  const afterRemoval = useCallback(async (id) => {
+    const list = await reloadProjects();
+    if (id !== projectId) return;
+    const next = list[0]?.id ?? null;
+    setProjectId(next);
+    if (next) await reload(next);
+    else setData(null);
+  }, [projectId, reload, reloadProjects]);
+
+  const archiveProject = useCallback(async (id) => {
+    await API.post(`/projects/${id}/archive`);
+    await afterRemoval(id);
+  }, [afterRemoval]);
+
+  const deleteProject = useCallback(async (id) => {
+    await API.del(`/projects/${id}`);
+    await afterRemoval(id);
+  }, [afterRemoval]);
+
+  const restoreProject = useCallback(async (id) => {
+    await API.post(`/projects/${id}/restore`);
+    await reloadProjects();
+  }, [reloadProjects]);
+
   const value = {
     projects, projectId, data, loading, initialLoading, error,
     reload: () => reload(),
     switchProject,
     reloadProjects,
-    setProjectId
+    setProjectId,
+    archiveProject,
+    restoreProject,
+    deleteProject
   };
 
   return <ProjectDataContext.Provider value={value}>{children}</ProjectDataContext.Provider>;

@@ -121,8 +121,12 @@ router.delete('/resources/:id', wrap(async (req, res) => {
 }));
 
 // ---------------- Projects (Project-Data section) ----------------
+// Active projects by default; ?archived=1 lists only the archived ones.
 router.get('/projects', wrap(async (req, res) => {
-  const r = await db.query('SELECT * FROM projects WHERE owner_user_id=$1 ORDER BY id', [req.userId]);
+  const archived = ['1', 'true'].includes(String(req.query.archived));
+  const r = await db.query(
+    `SELECT * FROM projects WHERE owner_user_id=$1 AND archived_at IS ${archived ? 'NOT NULL' : 'NULL'} ORDER BY ${archived ? 'archived_at DESC' : 'id'}`,
+    [req.userId]);
   res.json(r.rows);
 }));
 
@@ -212,6 +216,53 @@ async function createProject(userId, f = {}) {
 
 router.post('/projects', wrap(async (req, res) => {
   res.status(201).json(await createProject(req.userId, req.body || {}));
+}));
+
+// ---------------- Archive / restore / delete ----------------
+// Archiving only hides a project from the project lists - all its data stays
+// and it can be restored. Deleting is permanent: every project table cascades
+// (ON DELETE CASCADE), and the project's own Application Details record is
+// removed too unless another project still uses it.
+// Only the project's owner may do these - the /projects/:id guard above also
+// lets anyone read shared (owner-less) projects such as the seeded sample.
+const ownerOnly = (req, res, next) => {
+  db.query('SELECT owner_user_id FROM projects WHERE id=$1', [req.params.id])
+    .then((r) => (r.rows[0]?.owner_user_id === req.userId
+      ? next()
+      : res.status(403).json({ error: 'Only the project owner can archive, restore or delete it' })))
+    .catch((e) => { console.error(e); res.status(500).json({ error: e.message }); });
+};
+
+router.post('/projects/:id/archive', ownerOnly, wrap(async (req, res) => {
+  const r = await db.query('UPDATE projects SET archived_at = COALESCE(archived_at, now()) WHERE id=$1 RETURNING *', [req.params.id]);
+  res.json(r.rows[0]);
+}));
+
+router.post('/projects/:id/restore', ownerOnly, wrap(async (req, res) => {
+  const r = await db.query('UPDATE projects SET archived_at = NULL WHERE id=$1 RETURNING *', [req.params.id]);
+  res.json(r.rows[0]);
+}));
+
+router.delete('/projects/:id', ownerOnly, wrap(async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+    const p = (await client.query('DELETE FROM projects WHERE id=$1 RETURNING id, project_key, application_id', [req.params.id])).rows[0];
+    let applicationDeleted = false;
+    if (p?.application_id) {
+      const r = await client.query(
+        'DELETE FROM applications a WHERE a.id=$1 AND NOT EXISTS (SELECT 1 FROM projects WHERE application_id=a.id)',
+        [p.application_id]);
+      applicationDeleted = r.rowCount > 0;
+    }
+    await client.query('COMMIT');
+    res.json({ deleted: true, id: p.id, projectKey: p.project_key, applicationDeleted });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }));
 
 router.get('/projects/:id', wrap(async (req, res) => {

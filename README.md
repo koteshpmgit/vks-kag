@@ -46,6 +46,16 @@ Analysis/Design documents.
     roles like VO); empty optional sections, with the artifacts each one feeds.
 
   Logic lives in `frontend/src/data/projectMessages.js`.
+- **Archive & delete projects** — on the project home, **Archive project** and **Delete
+  project** sit right before **Switch Project**:
+  - **Archive** hides the project from every project list (start screen and the layouts'
+    project selectors) but keeps all its data. **Archived projects** on the start screen lists
+    them with **Restore** and **Delete**.
+  - **Delete** is permanent: the project, its SRS, Analysis & Design, Data Sheet sections,
+    HR plan, WBS, timesheet and its own Application Details record are removed. The
+    confirmation offers **Archive instead**.
+  - Only the project's owner can archive, restore or delete it. If the open project is
+    removed, the app moves to another project (or the start screen when none is left).
 - **Multiple layouts** over the same data:
 
   | Route | Layout |
@@ -62,9 +72,9 @@ Analysis/Design documents.
   Downloads go through `API.download()` (`frontend/src/api/client.js`), which sends the login
   token; a plain link to an `/api/...` URL would get `401`.
 - **WBS & Timesheet** — generate, edit and export the JIRA WBS and a per-resource timesheet.
-- **Interactive demo** — a self-running, 13-chapter product tour in [demo/](demo/) (open
+- **Interactive demo** — a self-running, 14-chapter product tour in [demo/](demo/) (open
   `demo/index.html` in a browser; no backend needed). It walks through the SRS-first flow
-  (upload → review → pre-filled wizard → Messages), then the Data Sheet, effort
+  (upload → review → pre-filled wizard → Messages → archive & delete), then the Data Sheet, effort
   calculation, WBS (with the resource loading check and its "Generate anyway" prompt),
   artifacts, export and layouts. Switch to **Explore** to click through it
   yourself; the Messages chapter's fix buttons really open the wizard on the right step.
@@ -330,8 +340,8 @@ Frontend container:
 
 ## Upgrading an existing database
 
-The backend creates missing newer tables (`users`, `srs_*`, `timesheet_entries`) at startup
-if its DB role is allowed to. For a deployed database where the app uses a restricted role,
+The backend creates missing newer tables (`users`, `srs_*`, `timesheet_entries`) and columns
+(`projects.owner_user_id`, `projects.archived_at`) at startup if its DB role is allowed to. For a deployed database where the app uses a restricted role,
 run the helpers as the Postgres admin user:
 
 ```bash
@@ -361,6 +371,9 @@ GRANT_TO=<app_role> PGHOST=... PGUSER=postgres PGPASSWORD=... node src/db/grant-
    generated from it.
 7. **Copy To Desktop / Export** downloads any artifact as `.xls`, `.csv`, `.html`, `.doc` or `.pdf`.
 8. **Protect/Unprotect** (Excel layout) toggles read-only mode.
+9. **Archive project** / **Delete project** (project home, before **Switch Project**) hide a
+   finished project or remove it for good; restore archived ones from **Archived projects**
+   on the start screen.
 
 ## Key API endpoints
 
@@ -372,7 +385,9 @@ GET  /api/auth/me
 
 GET  /api/application                     PUT  /api/application/:id
 GET|POST /api/resources                   PUT|DELETE /api/resources/:id
-GET|POST /api/projects                    GET|PUT /api/projects/:id
+GET|POST /api/projects[?archived=1]       GET|PUT /api/projects/:id   (list: active, or archived only)
+POST /api/projects/:id/archive            POST /api/projects/:id/restore
+DELETE /api/projects/:id                  (permanent; owner only, like archive/restore)
 GET  /api/projects/:id/computed
 
 POST /api/srs                             (multipart "file" + optional "project_key": creates a project from an SRS)
@@ -403,6 +418,8 @@ training, process, environments, dar, agenda, modules`.
 | SRS upload fails with "File is too large" / `413` | File over 10 MB | Upload a smaller file, or raise both `client_max_body_size` (Nginx) and `SRS_MAX_MB` (backend) |
 | SRS upload fails with `502` / `504` | The backend took longer than Nginx waits | Nginx waits 300 s (`proxy_read_timeout`); rebuild the frontend image if yours predates this. The project may still have been created, so check the project list before re-uploading. |
 | A download button does nothing / shows "Download failed" | Older builds navigated to `/api/...` without the login token (`401`) | Rebuild the frontend (`docker compose up -d --build frontend`) and reload with **Ctrl+Shift+R** |
+| A project disappeared from the list | It was archived | Start screen → **Show archived projects** → **Restore** |
+| Archive/Delete says "Only the project owner can…" | The project belongs to another account, or is the shared sample project | Ask its owner; the shared sample can't be archived or deleted |
 | Not sure what's still missing | — | Check the **Messages** section on the project home (or classic Home / top of the Modern layout); every item has a fix button |
 | Generate WBS: "Cannot generate the WBS - fix the resource loading…" | A person is over 100%, a % is outside 1–100, or member dates are reversed | Fix the listed people in the HR plan (see [Resource loading check](#resource-loading-check-before-generating-the-wbs)) |
 | Generate WBS asks "Check resource loading" | Someone's WBS hours exceed their full-time hours, has no IPN, or is outside the schedule | **Fix first** (the message says how), or **Generate anyway** |
