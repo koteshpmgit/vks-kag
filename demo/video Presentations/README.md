@@ -13,13 +13,13 @@ the current line is highlighted while it plays, and clicking a line jumps the vi
 
 | Slide | Video | Length | Shows |
 |---|---|---|---|
-| Overview tour | `videos/00-interactive-demo-tour.mp4` | 1:58 | The 14-chapter interactive demo (`../index.html`), recorded |
+| Overview tour | `videos/00-interactive-demo-tour.mp4` | 2:11 | The 15-chapter interactive demo (`../index.html`), recorded |
 | SRS-first onboarding | `videos/01-srs-first-onboarding.mp4` | 2:18 | Sign up → upload SRS → Claude analysis → review → pre-filled wizard (start date, people, organisation data) → Messages → resource loading → WBS → Analysis Document |
 | Classic editor | `videos/02-classic-editor.mp4` | 0:53 | `/classic`: Home + Messages, sections, HR plan, Project Summary, artifact preview + export, layout switch |
 | Modern layout | `videos/03-modern-layout.mp4` | 0:37 | `/modern`: sidebar, accordion/tabs, summary popover, artifacts |
 | Excel layout | `videos/04-excel-layout.mp4` | 0:53 | `/excel`: Data Sheet sections, sheet tabs, WBS sheet, Protect/Unprotect, Copy To Desktop |
 | Managing projects | `videos/05-manage-projects.mp4` | 0:52 | Create manually, archive, restore, delete |
-| All features | — | — | 16 feature cards, each linking to its video and its interactive-demo chapter |
+| All features | — | — | 17 feature cards, each linking to its video and its interactive-demo chapter |
 
 Each `videos/*.jpg` is the poster frame and each `videos/*.vtt` the subtitle file (narration
 text with timings) for the matching video. `narration.js` holds the same cues for the site:
@@ -29,7 +29,7 @@ from there.
 Feature links open the interactive demo on a chapter: `../index.html#<chapter>` opens it in
 **Explore** mode, `../index.html#<chapter>:play` autoplays from there (chapters: `welcome`,
 `auth`, `start`, `review`, `wizard`, `messages`, `manage`, `datasheet`, `effort`, `wbs`,
-`artifacts`, `export`, `layouts`, `finish`).
+`artifacts`, `export`, `layouts`, `help`, `finish`).
 
 ## Re-recording the videos
 

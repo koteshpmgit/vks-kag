@@ -2,73 +2,78 @@
 window.KAG_NARRATION = {
  "00-interactive-demo-tour": [
   {
-   "start": 0.521,
-   "end": 8.68,
+   "start": 0.511,
+   "end": 8.635,
    "text": "Key Artifact Generator turns a requirements document into a complete project, with every key artifact generated from one Data Sheet."
   },
   {
-   "start": 8.68,
-   "end": 14.171,
+   "start": 8.635,
+   "end": 14.108,
    "text": "Sign up or log in. Each account only sees its own projects."
   },
   {
-   "start": 14.171,
-   "end": 22.725,
+   "start": 14.108,
+   "end": 22.916,
    "text": "The first screen after login: upload the requirements document. The project is created from it, and Claude starts reading."
   },
   {
-   "start": 22.725,
-   "end": 31.186,
+   "start": 23.096,
+   "end": 31.593,
    "text": "Review what Claude extracted: requirements, use cases, components and API endpoints, then open the pre-filled wizard."
   },
   {
-   "start": 31.186,
-   "end": 40.674,
+   "start": 31.593,
+   "end": 41.081,
    "text": "The New Project wizard opens already filled in from the document. Add the start date, assign real people to the team, and save the project."
   },
   {
-   "start": 41.032,
-   "end": 48.47,
+   "start": 41.419,
+   "end": 48.857,
    "text": "The Messages section lists what is still missing, how serious it is, and a button that jumps straight to the fix."
   },
   {
-   "start": 49.521,
-   "end": 58.114,
+   "start": 49.892,
+   "end": 58.485,
    "text": "Archive a finished project to hide it and restore it any time, or delete it permanently. Both sit right before Switch Project."
   },
   {
-   "start": 58.98,
-   "end": 66.223,
+   "start": 59.336,
+   "end": 66.579,
    "text": "One editable Data Sheet, in four groups and two dozen sections, feeds every generated artifact."
   },
   {
-   "start": 69.179,
-   "end": 75.911,
+   "start": 69.574,
+   "end": 76.269,
    "text": "Change a phase percentage, and the effort, schedule and milestone dates recalculate instantly."
   },
   {
-   "start": 75.911,
-   "end": 85.594,
+   "start": 76.269,
+   "end": 85.948,
    "text": "Before the work breakdown is generated, resource loading is checked. Overloaded people are flagged, and you choose to fix first or generate anyway."
   },
   {
-   "start": 85.594,
-   "end": 93.087,
+   "start": 85.948,
+   "end": 93.442,
    "text": "Twelve key artifacts are assembled from the Data Sheet, including the Analysis and Design documents written by Claude."
   },
   {
-   "start": 93.896,
-   "end": 100.604,
+   "start": 94.353,
+   "end": 101.157,
    "text": "Every artifact exports to Excel, CSV, HTML, Word or PDF."
   },
   {
-   "start": 100.604,
-   "end": 107.932,
+   "start": 101.157,
+   "end": 108.502,
    "text": "Work in the Modern, Classic or Excel layout, all on the same data, with the workbook's sheet protection."
   },
   {
-   "start": 107.932,
-   "end": 116.061,
+   "start": 108.502,
+   "end": 117.285,
+   "text": "Every header has Demo and Video Demo buttons. They open in a frameless window you can minimise, maximise, or take full screen."
+  },
+  {
+   "start": 120.099,
+   "end": 128.227,
    "text": "That is Key Artifact Generator, from a requirements document to a complete, client-ready set of project artifacts."
   }
  ],

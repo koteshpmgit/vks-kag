@@ -1,57 +1,61 @@
 WEBVTT
 
 1
-00:00:00.521 --> 00:00:08.680
+00:00:00.511 --> 00:00:08.635
 Key Artifact Generator turns a requirements document into a complete project, with every key artifact generated from one Data Sheet.
 
 2
-00:00:08.680 --> 00:00:14.171
+00:00:08.635 --> 00:00:14.108
 Sign up or log in. Each account only sees its own projects.
 
 3
-00:00:14.171 --> 00:00:22.725
+00:00:14.108 --> 00:00:22.916
 The first screen after login: upload the requirements document. The project is created from it, and Claude starts reading.
 
 4
-00:00:22.725 --> 00:00:31.186
+00:00:23.096 --> 00:00:31.593
 Review what Claude extracted: requirements, use cases, components and API endpoints, then open the pre-filled wizard.
 
 5
-00:00:31.186 --> 00:00:40.674
+00:00:31.593 --> 00:00:41.081
 The New Project wizard opens already filled in from the document. Add the start date, assign real people to the team, and save the project.
 
 6
-00:00:41.032 --> 00:00:48.470
+00:00:41.419 --> 00:00:48.857
 The Messages section lists what is still missing, how serious it is, and a button that jumps straight to the fix.
 
 7
-00:00:49.521 --> 00:00:58.114
+00:00:49.892 --> 00:00:58.485
 Archive a finished project to hide it and restore it any time, or delete it permanently. Both sit right before Switch Project.
 
 8
-00:00:58.980 --> 00:01:06.223
+00:00:59.336 --> 00:01:06.579
 One editable Data Sheet, in four groups and two dozen sections, feeds every generated artifact.
 
 9
-00:01:09.179 --> 00:01:15.911
+00:01:09.574 --> 00:01:16.269
 Change a phase percentage, and the effort, schedule and milestone dates recalculate instantly.
 
 10
-00:01:15.911 --> 00:01:25.594
+00:01:16.269 --> 00:01:25.948
 Before the work breakdown is generated, resource loading is checked. Overloaded people are flagged, and you choose to fix first or generate anyway.
 
 11
-00:01:25.594 --> 00:01:33.087
+00:01:25.948 --> 00:01:33.442
 Twelve key artifacts are assembled from the Data Sheet, including the Analysis and Design documents written by Claude.
 
 12
-00:01:33.896 --> 00:01:40.604
+00:01:34.353 --> 00:01:41.157
 Every artifact exports to Excel, CSV, HTML, Word or PDF.
 
 13
-00:01:40.604 --> 00:01:47.932
+00:01:41.157 --> 00:01:48.502
 Work in the Modern, Classic or Excel layout, all on the same data, with the workbook's sheet protection.
 
 14
-00:01:47.932 --> 00:01:56.061
+00:01:48.502 --> 00:01:57.285
+Every header has Demo and Video Demo buttons. They open in a frameless window you can minimise, maximise, or take full screen.
+
+15
+00:02:00.099 --> 00:02:08.227
 That is Key Artifact Generator, from a requirements document to a complete, client-ready set of project artifacts.

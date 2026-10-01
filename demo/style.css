@@ -425,3 +425,31 @@ table.tbl tr.total-row td{font-weight:700; color:var(--text); background:rgba(91
 .arch-list li{display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px dashed var(--border); border-radius:10px}
 .arch-list li span{flex:1; display:flex; flex-direction:column}
 .arch-list small{font-size:11px; color:var(--text-faint)}
+
+/* Demo / Video Demo frameless window (mirrors frontend/src/styles/demo-windows.css) */
+.tb-video-btn{border:1px solid var(--border); background:var(--surface-2); color:var(--text); border-radius:9px; padding:7px 12px; font:600 12.5px var(--sans); cursor:pointer}
+.tb-video-btn:hover{border-color:var(--accent); color:var(--accent)}
+.dw-window{position:fixed; display:flex; flex-direction:column; min-width:340px; min-height:220px; max-width:100vw; max-height:100vh; background:#0f172a; border-radius:12px; overflow:hidden; resize:both; box-shadow:0 24px 60px rgba(2,6,23,.45), 0 0 0 1px rgba(148,163,184,.25)}
+.dw-window[hidden]{display:none}
+.dw-window.dw-max{inset:8px; width:auto; height:auto; resize:none}
+.dw-window:fullscreen{border-radius:0}
+.dw-titlebar{flex:0 0 auto; display:flex; align-items:center; gap:10px; height:38px; padding:0 6px 0 14px; background:linear-gradient(135deg,#0f172a,#134e4a); color:#f1f5f9; cursor:grab; user-select:none}
+.dw-title{flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; font:600 13.5px/1 var(--sans); white-space:nowrap; overflow:hidden}
+.dw-title small{font-weight:400; font-size:12px; color:#94a3b8}
+.dw-controls{display:flex; gap:2px}
+.dw-controls button{width:34px; height:28px; border:0; border-radius:6px; background:transparent; color:#e2e8f0; font-size:15px; cursor:pointer}
+.dw-controls button:hover{background:rgba(255,255,255,.14)}
+.dw-controls .dw-close:hover{background:#dc2626; color:#fff}
+.dw-frame{flex:1; width:100%; border:0; background:#fff}
+.dw-shield{position:fixed; inset:0; z-index:99999; cursor:grabbing}
+.dw-dock{position:fixed; left:50%; bottom:12px; transform:translateX(-50%); z-index:950; display:flex; gap:8px}
+.dw-dock-item{display:flex; border-radius:999px; background:#0f172a; box-shadow:0 10px 28px rgba(2,6,23,.35); overflow:hidden}
+.dw-dock-item button{border:0; background:transparent; color:#f1f5f9; padding:9px 10px 9px 16px; font:600 13px var(--sans); cursor:pointer}
+.dw-dock-item button + button{color:#94a3b8; padding:9px 14px 9px 4px}
+/* mock app header in the "Demo & Video Demo Buttons" chapter */
+.mock-header{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border-radius:10px; background:linear-gradient(135deg,#0f172a,#0e7490); color:#f1f5f9}
+.mh-brand{display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px}
+.mh-brand .tb-logo{width:26px; height:26px; font-size:11px}
+.mh-actions{display:flex; flex-wrap:wrap; align-items:center; gap:6px}
+.mh-actions .note{color:#cbd5e1}
+@media (max-width:760px){ .dw-title small{display:none} .dw-window{resize:none} }

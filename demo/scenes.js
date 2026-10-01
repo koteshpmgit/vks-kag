@@ -1,5 +1,5 @@
 // Key Artifact Generator — Interactive Demo content.
-// Shared in-memory "demo data store" + reusable UI builders, then the 14
+// Shared in-memory "demo data store" + reusable UI builders, then the 15
 // scenes (render + optional autoplay script) consumed by app.js.
 (function () {
   'use strict';
@@ -331,11 +331,86 @@
     }));
   }
 
+  // ---------------- Frameless Demo / Video Demo window ----------------
+  // Mirrors the app's header buttons (frontend DemoWindows.jsx): a window drawn in
+  // the page with minimise (to a dock tab), maximise/restore, full screen, pop out
+  // and close; draggable by its title bar, resizable from the corner.
+  const DEMO_WINDOWS = {
+    demo: { title: 'Interactive Demo', icon: '🎬', hint: 'Self-running product tour', src: 'index.html#welcome' },
+    video: { title: 'Video Demo', icon: '▶️', hint: 'Narrated walkthrough videos', src: 'video%20Presentations/index.html' }
+  };
+  const openWins = {};
+  let winZ = 900;
+  function dockRefresh() {
+    let dock = document.getElementById('dwDock');
+    const mins = Object.values(openWins).filter((w) => w.state === 'min');
+    if (!mins.length) { if (dock) dock.remove(); return; }
+    if (!dock) { dock = document.createElement('div'); dock.id = 'dwDock'; dock.className = 'dw-dock'; document.body.appendChild(dock); }
+    dock.innerHTML = mins.map((w) => `<span class="dw-dock-item"><button type="button" data-restore="${w.id}">${DEMO_WINDOWS[w.id].icon} ${DEMO_WINDOWS[w.id].title}</button><button type="button" data-close="${w.id}" aria-label="Close">×</button></span>`).join('');
+    dock.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => openWins[b.dataset.restore].restore()));
+    dock.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => openWins[b.dataset.close].close()));
+  }
+  function openDemoWindow(id) {
+    if (openWins[id]) { openWins[id].restore(); openWins[id].front(); return openWins[id]; }
+    const def = DEMO_WINDOWS[id];
+    const el = document.createElement('section');
+    el.className = 'dw-window';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', def.title);
+    const w = Math.min(1100, Math.round(window.innerWidth * 0.8)), h = Math.min(720, Math.round(window.innerHeight * 0.8));
+    const pos = { x: Math.round((window.innerWidth - w) / 2) + (id === 'video' ? 24 : 0), y: Math.round((window.innerHeight - h) / 2) + (id === 'video' ? 24 : 0), w, h };
+    el.innerHTML = `<header class="dw-titlebar"><span class="dw-title">${def.icon} ${def.title}<small>${def.hint}</small></span><span class="dw-controls">` +
+      `<button type="button" data-act="pop" title="Open in a separate window" aria-label="Pop out">⧉</button>` +
+      `<button type="button" data-act="min" title="Minimise" aria-label="Minimise">—</button>` +
+      `<button type="button" data-act="max" title="Maximise" aria-label="Maximise">□</button>` +
+      `<button type="button" data-act="full" title="Full screen" aria-label="Full screen">⛶</button>` +
+      `<button type="button" data-act="close" class="dw-close" title="Close" aria-label="Close">×</button></span></header>` +
+      `<iframe class="dw-frame" src="${def.src}" title="${def.title}" allow="fullscreen; autoplay" allowfullscreen></iframe>`;
+    document.body.appendChild(el);
+    const win = { id, el, state: 'normal' };
+    const place = () => {
+      el.classList.toggle('dw-max', win.state === 'max');
+      el.hidden = win.state === 'min';
+      if (win.state === 'normal') Object.assign(el.style, { left: pos.x + 'px', top: pos.y + 'px', width: pos.w + 'px', height: pos.h + 'px' });
+      else if (win.state === 'max') Object.assign(el.style, { left: '', top: '', width: '', height: '' });
+      const mx = el.querySelector('[data-act="max"]');
+      mx.textContent = win.state === 'max' ? '❐' : '□';
+      mx.title = mx.ariaLabel = win.state === 'max' ? 'Restore' : 'Maximise';
+      dockRefresh();
+    };
+    win.front = () => { el.style.zIndex = ++winZ; };
+    win.minimise = () => { win.state = 'min'; place(); };
+    win.restore = () => { win.state = 'normal'; place(); win.front(); };
+    win.maximise = () => { win.state = win.state === 'max' ? 'normal' : 'max'; place(); };
+    win.fullscreen = () => (document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.().catch(() => {}));
+    win.close = () => { if (document.fullscreenElement === el) document.exitFullscreen(); el.remove(); delete openWins[id]; dockRefresh(); };
+    win.popOut = () => { if (window.open(def.src, 'kag-demo-' + id, 'popup=yes,width=1200,height=800')) win.close(); };
+    const acts = { pop: win.popOut, min: win.minimise, max: win.maximise, full: win.fullscreen, close: win.close };
+    el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => acts[b.dataset.act]()));
+    el.addEventListener('pointerdown', win.front);
+    const bar = el.querySelector('.dw-titlebar');
+    bar.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) win.maximise(); });
+    bar.addEventListener('pointerdown', (e) => {
+      if (win.state !== 'normal' || e.button !== 0 || e.target.closest('button')) return;
+      const sx = e.clientX, sy = e.clientY, ox = pos.x, oy = pos.y;
+      const shield = document.createElement('div'); shield.className = 'dw-shield'; document.body.appendChild(shield);
+      const move = (ev) => { pos.x = ox + ev.clientX - sx; pos.y = Math.max(0, oy + ev.clientY - sy); place(); };
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); shield.remove(); };
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    });
+    new ResizeObserver(() => { if (win.state === 'normal') { const r = el.getBoundingClientRect(); pos.w = Math.round(r.width); pos.h = Math.round(r.height); } }).observe(el);
+    if (window.innerWidth < 760) win.state = 'max';
+    openWins[id] = win;
+    place(); win.front();
+    return win;
+  }
+  document.getElementById('btnVideoDemo')?.addEventListener('click', () => openDemoWindow('video'));
+
   window.__KAG_DEMO_INTERNALS__ = {
     STORE, SECTION_DEFS, SECTION_BY_ID, escapeAttr, sectionTitle, smallTbl, statTile,
     rowsTableHTML, wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort,
     SRS_FILE, SRS_SECTIONS, applySrsPrefill, TBD, demoMessages, messagesPanelHTML, wireMessageFixes,
-    demoResourceLoading, resourceLoadingHTML
+    demoResourceLoading, resourceLoadingHTML, openDemoWindow, DEMO_WINDOWS
   };
 })();
 
@@ -642,7 +717,7 @@
   };
 })();
 
-// ---------------- The 14 scenes ----------------
+// ---------------- The 15 scenes ----------------
 (function () {
   'use strict';
   const K = window.__KAG_DEMO_INTERNALS__;
@@ -734,6 +809,7 @@
     'Pre-filled New Project wizard — review, complete and save in place',
     'Messages section — flags missing details, with one-click fixes',
     'Archive (restorable) or permanently delete a project, right before Switch Project',
+    'Demo & Video Demo buttons in every header — open in a frameless window (minimise, maximise, full screen)',
     'Resource loading check before generating the WBS — blocks over-allocation, flags overloads',
     'Live effort, schedule & FTE calculation engine', 'Data Sheet CRUD across 4 groups, 24 sections',
     'One-click WBS generation for JIRA import', '12 auto-assembled key artifacts',
@@ -1186,6 +1262,49 @@
         await E.clickFx(unRadio);
         unRadio.checked = true; STORE.protectMode = false; renderLayoutsStage(root);
         await E.wait(400);
+      }
+    },
+    {
+      id: 'help', group: 'Flexibility', icon: '🎓', title: 'Demo & Video Demo Buttons',
+      blurb: 'Every header has Demo and Video Demo buttons — they open in a frameless window you can minimise, maximise or go full screen.',
+      render(root) {
+        root.innerHTML = `<h1>Demo &amp; Video Demo — Built In</h1><p class="lead">Every layout’s header — and the login and sign-up pages — has <b>🎬 Demo</b> and <b>▶ Video Demo</b> buttons, so anyone can learn the app without leaving it. Each opens in a <b>frameless window</b> inside the app. Try them below — the Video Demo window shows the real narrated videos.</p>` +
+          `<div class="device" style="max-width:820px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — any layout’s header</div></div>` +
+          `<div class="device-body"><div class="mock-header"><span class="mh-brand"><span class="tb-logo">KA</span> Key Artifact Generator</span><span class="mh-actions">` +
+          `<button type="button" class="btn sm" id="mhDemo">🎬 Demo</button><button type="button" class="btn sm" id="mhVideo">▶ Video Demo</button><button type="button" class="btn sm">Advanced / Full Editor</button><span class="note" style="margin:0">Priya Shah</span></span></div>` +
+          `<p class="note" style="margin:12px 0 0">Also on the login and sign-up pages: <i>“New here? See how it works: 🎬 Demo · ▶ Video Demo”</i></p></div></div>` +
+          `<div class="stat-grid" style="margin-top:14px">${[['—', 'Minimise', 'Collapse to a tab at the bottom — click it to restore'], ['□', 'Maximise / Restore', 'Fill the screen; double-click the title bar too'], ['⛶', 'Full screen', 'The browser’s real full screen — great for presenting'], ['⧉', 'Pop out', 'Open as a separate window, e.g. on a second monitor'], ['✥', 'Drag &amp; resize', 'Move it by the title bar, resize from the corner'], ['×', 'Close', 'Both windows can be open at once']].map(([i, t, d]) => `<div class="stat-tile" style="text-align:left"><b style="font-size:14px;font-family:var(--sans);color:var(--text)">${i}&nbsp; ${t}</b><span>${d}</span></div>`).join('')}</div>`;
+        root.querySelector('#mhDemo').addEventListener('click', () => K.openDemoWindow('demo'));
+        root.querySelector('#mhVideo').addEventListener('click', () => K.openDemoWindow('video'));
+      },
+      async script(E, stage) {
+        const root = root_(stage);
+        const btns = root.querySelector('.mh-actions');
+        E.setCaption('Demo and Video Demo sit in every header — next to the layout’s own controls.', 'GUIDE');
+        await E.pulse(btns, 900);
+        await E.clickFx(root.querySelector('#mhVideo'));
+        const win = K.openDemoWindow('video');
+        E.setCaption('Video Demo opens in a frameless window — the narrated walkthrough videos.', 'GUIDE');
+        try {
+          await E.wait(2600);
+          await E.clickFx(win.el.querySelector('[data-act="max"]'));
+          win.maximise();
+          E.setCaption('Maximise fills the screen (or go full screen with ⛶ for presenting).', 'GUIDE');
+          await E.wait(1800);
+          await E.clickFx(win.el.querySelector('[data-act="max"]'));
+          win.maximise();
+          await E.wait(700);
+          await E.clickFx(win.el.querySelector('[data-act="min"]'));
+          win.minimise();
+          E.setCaption('Minimise keeps it as a tab at the bottom — carry on working, restore it any time.', 'GUIDE');
+          await E.pulse(document.getElementById('dwDock'), 1300);
+          win.restore();
+          await E.wait(900);
+        } finally {
+          win.close();
+        }
+        E.setCaption('Close it when done — the app is right where you left it.', 'GUIDE');
+        await E.wait(700);
       }
     },
     {

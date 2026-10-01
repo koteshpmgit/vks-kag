@@ -72,11 +72,12 @@ Analysis/Design documents.
   Downloads go through `API.download()` (`frontend/src/api/client.js`), which sends the login
   token; a plain link to an `/api/...` URL would get `401`.
 - **WBS & Timesheet** — generate, edit and export the JIRA WBS and a per-resource timesheet.
-- **Interactive demo** — a self-running, 14-chapter product tour in [demo/](demo/) (open
+- **Interactive demo** — a self-running, 15-chapter product tour in [demo/](demo/) (open
   `demo/index.html` in a browser; no backend needed). It walks through the SRS-first flow
   (upload → review → pre-filled wizard → Messages → archive & delete), then the Data Sheet, effort
   calculation, WBS (with the resource loading check and its "Generate anyway" prompt),
-  artifacts, export and layouts. Link straight to a chapter with `demo/index.html#<chapter>`
+  artifacts, export, layouts and the Demo / Video Demo buttons. Its top bar has a **▶ Video Demo**
+  button that opens the narrated videos in the same frameless window as the app. Link straight to a chapter with `demo/index.html#<chapter>`
   (Explore mode) or `#<chapter>:play` (autoplay). Switch to **Explore** to click through it
   yourself; the Messages chapter's fix buttons really open the wizard on the right step.
 - **Video presentations** — [demo/video Presentations/](demo/video%20Presentations/): open its

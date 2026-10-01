@@ -21,13 +21,14 @@ const NARRATION = {
   artifacts: 'Twelve key artifacts are assembled from the Data Sheet, including the Analysis and Design documents written by Claude.',
   export: 'Every artifact exports to Excel, CSV, HTML, Word or PDF.',
   layouts: 'Work in the Modern, Classic or Excel layout, all on the same data, with the workbook\'s sheet protection.',
+  help: 'Every header has Demo and Video Demo buttons. They open in a frameless window you can minimise, maximise, or take full screen.',
   finish: 'That is Key Artifact Generator, from a requirements document to a complete, client-ready set of project artifacts.'
 };
 
 const b = await openBrowser({ workDir, width: 1366, height: 820, narrate: true });
 console.log('narration clips ready:', b.preloadNarration([fileURLToPath(import.meta.url)]));
 await b.goto(demoUrl + '#welcome');
-await b.until(`document.querySelectorAll('.rail-item').length === 14`);
+await b.until(`document.querySelectorAll('.rail-item').length === SCENES.length`);
 const ids = await b.ev(`SCENES.map((s) => s.id)`);
 await b.startRecording('00-interactive-demo-tour', outDir);
 for (const id of ids) {
