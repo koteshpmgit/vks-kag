@@ -153,3 +153,7 @@
 .ob-archived-list small { font-size: 11px; color: var(--muted); }
 .ob-actions .btn-danger { margin-right: auto; }
 @media (max-width: 600px) { .ob-actions { flex-wrap: wrap; } }
+
+/* Demo / Video Demo on the login and sign-up pages */
+.auth-demos { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+.ob-header-actions { flex-wrap: wrap; justify-content: flex-end; }

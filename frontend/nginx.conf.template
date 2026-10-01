@@ -63,6 +63,16 @@ server {
         proxy_send_timeout 300s;
     }
 
+    # Interactive demo + video presentations, served by the backend (public).
+    location /demo/ {
+        set $backend_origin "${BACKEND_ORIGIN}";
+        proxy_pass $backend_origin;
+        proxy_http_version 1.1;
+        proxy_ssl_server_name on;
+        proxy_set_header Host $proxy_host;
+    }
+    location = /demo { return 301 /demo/; }
+
     # SPA fallback so client-side routes (/, /excel, /webapp) work on a hard reload.
     location / {
         try_files $uri $uri/ /index.html;

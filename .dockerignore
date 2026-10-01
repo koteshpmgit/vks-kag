@@ -8,3 +8,6 @@ backend/.env
 **/*.log
 .git
 README.md
+# demo video recording tools: bundled ffmpeg + browser work files (not served)
+demo/video Presentations/tools/node_modules
+demo/video Presentations/tools/.work

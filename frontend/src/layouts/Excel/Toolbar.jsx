@@ -1,6 +1,7 @@
 import React from 'react';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useDirty } from './DirtyContext.jsx';
+import { DemoButtons } from '../../components/common/DemoWindows.jsx';
 
 export default function Toolbar({
   sheetNames, artifact, setArtifact, onCopyArtifact, onGenerateWbs, protect, setProtect
@@ -29,6 +30,8 @@ export default function Toolbar({
         <label><input type="radio" name="protect" id="rbProtect" checked={protect} onChange={() => setProtect(true)} /> Protect</label>
         <label><input type="radio" name="protect" id="rbUnprotect" checked={!protect} onChange={() => setProtect(false)} /> Unprotect</label>
       </span>
+      <span className="sep"></span>
+      <DemoButtons variant="excel" />
     </div>
   );
 }

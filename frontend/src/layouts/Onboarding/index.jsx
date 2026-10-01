@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Wizard from '../WebApp/Wizard.jsx';
+import { DemoButtons } from '../../components/common/DemoWindows.jsx';
 import StartStep from './StartStep.jsx';
 import SrsUploadStep from './SrsUploadStep.jsx';
 import ReviewStep from './ReviewStep.jsx';
@@ -55,6 +56,7 @@ export default function OnboardingLayout() {
       <header className="ob-header">
         <div className="ob-brand"><span className="logo">KA</span><h1>Key Artifact Generator</h1></div>
         <div className="ob-header-actions">
+          <DemoButtons />
           <button type="button" className="btn btn-light btn-sm" onClick={() => navigate('/classic')}>Advanced / Full Editor</button>
           <span className="ob-user">{user?.name || user?.email}</span>
           <button type="button" className="btn btn-light btn-sm" onClick={logout}>Logout</button>

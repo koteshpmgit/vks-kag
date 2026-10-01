@@ -85,6 +85,13 @@ Analysis/Design documents.
   recorded demo tour) plus a feature index linking every feature to its video and demo
   chapter. Every video has an English voice-over in sync with the screen, subtitles and a
   clickable transcript. Recording scripts to regenerate the videos are in its `tools/` folder.
+- **Demo / Video Demo buttons** — in the header of every layout (project home, Classic,
+  Modern, Excel) and on the login and sign-up pages. Each opens the interactive demo or the
+  video presentations in a frameless in-app window with its own title bar: **minimise** (to a
+  tab at the bottom), **maximise / restore**, **full screen**, **pop out** (separate browser
+  window) and **close**; drag it by the title bar and resize it from the corner. Both can be open
+  at once. The pages are served by the backend at `/demo` (public, no login; the recording
+  `tools/` are not served) — Nginx and the Vite dev server pass `/demo/` through to it.
 
 ## SRS upload flow
 
@@ -203,6 +210,7 @@ vks-kag/
 │       └── styles/
 ├── demo/                         # standalone interactive product tour
 │   └── video Presentations/      # walkthrough videos + presentation site (index.html), tools/ to re-record
+│                                 # (demo/ is copied into the backend image and served at /demo)
 └── docs/                         # deployment notes (PDF)
 ```
 
@@ -385,7 +393,9 @@ GRANT_TO=<app_role> PGHOST=... PGUSER=postgres PGPASSWORD=... node src/db/grant-
 
 ## Key API endpoints
 
-All `/api/*` routes except `/api/auth/*` require `Authorization: Bearer <token>`.
+All `/api/*` routes except `/api/auth/*` require `Authorization: Bearer <token>`. The interactive
+demo and video presentations are served publicly at `/demo/` (`/demo/index.html`,
+`/demo/video%20Presentations/index.html`).
 
 ```
 POST /api/auth/signup                     POST /api/auth/login

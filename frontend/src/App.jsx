@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import { ProjectDataProvider, useProjectData } from './context/ProjectDataContext.jsx';
 import { DialogProvider } from './components/common/Dialogs.jsx';
+import { DemoWindowProvider } from './components/common/DemoWindows.jsx';
 import ExcelLayout from './layouts/Excel/index.jsx';
 import ModernLayout from './layouts/Modern/index.jsx';
 import WebAppLayout from './layouts/WebApp/index.jsx';
@@ -61,11 +62,13 @@ export default function App() {
   return (
     <AuthProvider>
       <DialogProvider>
+        <DemoWindowProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/*" element={<AuthedApp />} />
         </Routes>
+        </DemoWindowProvider>
       </DialogProvider>
     </AuthProvider>
   );

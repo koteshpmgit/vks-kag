@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext.jsx';
 import { GROUPS, SECTION_META } from '../../data/sections.jsx';
 import SettingsPopover from './SettingsPopover.jsx';
 import BackgroundPopover from './BackgroundPopover.jsx';
+import { DemoButtons } from '../../components/common/DemoWindows.jsx';
 import SummaryPopover from '../Modern/SummaryPopover.jsx';
 
 export default function Header({ page, onHome, onSummary, onOpenSection, onNewProject, onGenerateWbs }) {
@@ -60,6 +61,7 @@ export default function Header({ page, onHome, onSummary, onOpenSection, onNewPr
           <button className="icon-btn" title="Change background" onClick={() => toggle('bg')}>&#127912;</button>
           <BackgroundPopover hidden={openPop !== 'bg'} />
         </div>
+        <DemoButtons variant="icon" />
         <button className="icon-btn" title="New Project" onClick={onNewProject}>&#65291;</button>
         <button className="icon-btn" title="Generate WBS (for JIRA upload)" onClick={onGenerateWbs}>&#128736;</button>
         <div className="wa-menu-item" id="layoutSwitchWrap">

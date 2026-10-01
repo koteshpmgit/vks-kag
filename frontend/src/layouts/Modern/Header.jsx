@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import SettingsPopover from './SettingsPopover.jsx';
+import { DemoButtons } from '../../components/common/DemoWindows.jsx';
 import SummaryPopover from './SummaryPopover.jsx';
 
 export default function Header({ onNewProject, onGenerateWbs, onOpenSection }) {
@@ -38,6 +39,7 @@ export default function Header({ onNewProject, onGenerateWbs, onOpenSection }) {
           <button className="icon-btn" title="Display settings" aria-expanded={openPop === 'settings'} onClick={() => toggle('settings')}>&#9881;</button>
           <SettingsPopover hidden={openPop !== 'settings'} />
         </div>
+        <DemoButtons variant="icon" />
         <button className="icon-btn" title="New Project" onClick={onNewProject}>&#65291;</button>
         <button className="icon-btn" title="Generate WBS (for JIRA upload)" onClick={onGenerateWbs}>&#128736;</button>
         <label className="hdr-field layout-switch">

@@ -12,6 +12,8 @@ WORKDIR /app
 # node_modules tree is fully portable into the Linux container. Prerequisite:
 # run "npm install" in ./backend on the host before building.
 COPY backend ./backend
+# interactive demo + video presentations, served at /demo (see server.js)
+COPY demo ./demo
 
 # If node_modules did not come with the copy, fall back to npm ci with
 # TLS-interception tolerance and retries; then hard-verify either way -

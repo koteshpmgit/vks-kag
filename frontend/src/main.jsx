@@ -9,6 +9,7 @@ import './styles/webapp.css';
 import './styles/wizard.css';
 import './styles/onboarding.css';
 import './styles/messages.css';
+import './styles/demo-windows.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

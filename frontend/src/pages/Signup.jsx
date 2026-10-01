@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { DemoButtons } from '../components/common/DemoWindows.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Signup() {
@@ -49,6 +50,7 @@ export default function Signup() {
         </label>
         <button className="btn btn-accent auth-submit" type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Sign up'}</button>
         <p className="auth-switch">Already have an account? <Link to="/login">Log in</Link></p>
+        <div className="auth-demos"><span>New here? See how it works:</span><DemoButtons /></div>
       </form>
     </div>
   );
