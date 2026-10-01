@@ -1,5 +1,5 @@
 // Key Artifact Generator — Interactive Demo content.
-// Shared in-memory "demo data store" + reusable UI builders, then the 12
+// Shared in-memory "demo data store" + reusable UI builders, then the 13
 // scenes (render + optional autoplay script) consumed by app.js.
 (function () {
   'use strict';
@@ -49,6 +49,7 @@
   // never contains - HR plan, resources, stakeholder matrix, agenda - stays as
   // the sample rows above.
   const SRS_FILE = 'SRS_Payroll_Module.pdf';
+  const TBD = 'To be assigned';
   const SRS_PREFILL = {
     project: {
       project_key: 'SRS_Payroll_Module', project_type: 'MQC', fp_count: '140', start_date: '',
@@ -90,10 +91,16 @@
         { name: 'Self-Service Portal', description: 'Employees view payslips and tax forms' },
         { name: 'Reports', description: 'Statutory and management reports' }
       ],
-      goals: [{ metric: 'Batch run time', target: '< 2 hours' }, { metric: 'Payslip accuracy', target: '100%' }, { metric: 'Portal availability', target: '99.9%' }]
+      goals: [{ metric: 'Batch run time', target: '< 2 hours' }, { metric: 'Payslip accuracy', target: '100%' }, { metric: 'Portal availability', target: '99.9%' }],
+      // not from the SRS: the standard role-wise team every SRS project starts
+      // with, so the WBS can be generated - people are placeholders to assign
+      hrplan: [
+        ['Project Owner', 30], ['Offshore Domain Owner', 15], ['Technical Lead', 20], ['Developer1', 80],
+        ['Developer2', 80], ['Test Lead', 20], ['Test Engineer', 70], ['PQAO', 3]
+      ].map(([role, pct]) => ({ role, name: TBD, pct: String(pct) }))
     }
   };
-  const SRS_SECTIONS = new Set(['appDetails', ...Object.keys(SRS_PREFILL.rows)]);
+  const SRS_SECTIONS = new Set(['appDetails', ...Object.keys(SRS_PREFILL.rows).filter((k) => k !== 'hrplan')]);
   function applySrsPrefill() {
     if (STORE.prefilled) return;
     Object.assign(STORE.project, SRS_PREFILL.project);
@@ -242,10 +249,93 @@
     return { rows, totalPct, totalMd, totalHr, endDate: fmt(end), kickOffDate: fmt(start), patDate: fmt(patDate), avgResPerDay, totalFte };
   }
 
+  // ---------------- Messages panel (mirrors frontend/src/data/projectMessages.js) ----------------
+  // fix targets: 'wizard:<stepId>' opens the wizard on that step, 'scene:<id>' jumps to a chapter
+  const FEEDS = {
+    hardware: ['Kick-Off', 'IPP-Application Information'], software: ['Kick-Off', 'IPP-Application Information'],
+    environments: ['IPP-Application Information'], docs: ['AIN-Project'], modules: ['AIN-Project', 'IPP-Scope Management'],
+    training: ['IPP-Scope Management'], process: ['IPP-Process Planning'], goals: ['Kick-Off'], agenda: ['Kick-Off'],
+    constraints: ['Kick-Off', 'IPP-Scope Management'], dependencies: ['Kick-Off', 'IPP-Scope Management'],
+    assumptions: ['Kick-Off', 'IPP-Scope Management'], risks: ['Kick-Off', 'IPP-Scope Management']
+  };
+  const MESSAGE_LEVELS = { error: ['Action needed', '⛔'], warning: ['Recommended', '⚠️'], info: ['Tip', 'ℹ️'] };
+  const hasContent = (r) => Object.values(r).some((v) => v != null && String(v).trim() !== '');
+  // ---------------- Resource loading (mirrors checkResourceLoading in backend/src/services/wbs.js) ----------------
+  // Each person's WBS hours = their role's task hours x their %; load = WBS hours / full-time hours
+  // (working days x 8h). Over 100% = their tasks can't fit even full-time -> warning; Σ% > 100 -> error.
+  const DEMO_SCHEDULE = { start: '2026-09-14', end: '2027-03-05', workingDays: 125 };
+  const ROLE_TASK_HOURS = {   // role task-template hours at 100% for this demo project
+    'Project Owner': 1450, 'Offshore Domain Owner': 1150, 'Technical Lead': 1500, Developer1: 1310, Developer2: 1310,
+    'Test Lead': 1600, 'Test Engineer': 1180, PQAO: 1250, PM: 1450, Developer: 1310, Tester: 1180, 'Team Lead': 1500
+  };
+  function demoResourceLoading() {
+    const fullTime = DEMO_SCHEDULE.workingDays * 8;
+    const errors = []; const warnings = [];
+    const members = (STORE.rows.hrplan || []).filter((r) => r.role).map((r) => {
+      const pct = Number(r.pct) || 0;
+      const name = r.name && r.name !== TBD ? r.name : `${r.role} (to be assigned)`;
+      const wbsHrs = Math.round((ROLE_TASK_HOURS[r.role] || 1000) * pct / 100);
+      const load = Math.round((wbsHrs / fullTime) * 100);
+      let status = 'ok';
+      if (pct > 100) { status = 'over'; errors.push(`${name} is allocated ${pct}% — one person cannot exceed 100%.`); }
+      else if (wbsHrs > fullTime) {
+        status = 'overloaded';
+        warnings.push(`${name} would get ${wbsHrs}h of WBS tasks but has only ${fullTime}h of working time (${DEMO_SCHEDULE.workingDays} working days, full-time) — ${load}% loaded. Lower their ${pct}% to at most ${Math.floor(pct * fullTime / wbsHrs)}% and give the rest of the role to another person, or extend their dates.`);
+      }
+      return { name, role: r.role, pct, wbsHrs, booked: Math.round(fullTime * pct / 100), fullTime, load, status };
+    });
+    return { members, errors, warnings };
+  }
+  function resourceLoadingHTML() {
+    const rl = demoResourceLoading();
+    const chip = { ok: ['OK', 'ok'], overloaded: ['Overloaded', 'warn'], over: ['Over 100%', 'bad'] };
+    return `<div class="rl-panel"><div class="rl-head"><b>Resource loading</b><span class="note">checked before generating · schedule ${DEMO_SCHEDULE.start} – ${DEMO_SCHEDULE.end}</span>` +
+      (rl.errors.length ? `<span class="rl-chip bad">${rl.errors.length} blocking</span>` : '') + (rl.warnings.length ? `<span class="rl-chip warn">${rl.warnings.length} to check</span>` : '') + `</div>` +
+      `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Person</th><th>Role</th><th>Allocation</th><th>WBS hours</th><th>Booked hours</th><th>Full-time hours</th><th>Load</th><th>Status</th></tr></thead><tbody>` +
+      rl.members.map((m) => `<tr data-status="${m.status}"><td>${m.name}</td><td>${m.role}</td><td class="num">${m.pct}%</td><td class="num">${m.wbsHrs}</td><td class="num">${m.booked}</td><td class="num">${m.fullTime}</td><td class="num">${m.load}%</td><td><span class="rl-chip ${chip[m.status][1]}">${chip[m.status][0]}</span></td></tr>`).join('') +
+      `</tbody></table></div>` +
+      (rl.errors.length + rl.warnings.length ? `<ul class="rl-issues">${rl.errors.map((e) => `<li>⛔ ${e}</li>`).join('')}${rl.warnings.map((w) => `<li>⚠️ ${w}</li>`).join('')}</ul>` : '') + `</div>`;
+  }
+
+  function demoMessages() {
+    const p = STORE.project;
+    const msgs = [];
+    if (!p.start_date) msgs.push({ level: 'error', title: 'Start Date is missing', detail: 'Schedule, milestone dates and WBS task dates are calculated from it — Generate WBS won’t run until it’s set.', fix: 'wizard:__create__', fixLabel: 'Set Start Date' });
+    if (!(Number(p.fp_count) > 0)) msgs.push({ level: 'error', title: 'FP Count is 0', detail: 'Effort, FTE and every WBS estimate come from the function point count.', fix: 'wizard:__create__', fixLabel: 'Set FP Count' });
+    const tbd = (STORE.rows.hrplan || []).filter((r) => r.name === TBD);
+    if (tbd.length) msgs.push({ level: 'warning', title: `${tbd.length} team role${tbd.length > 1 ? 's are' : ' is'} not assigned to a person`, detail: `${tbd.map((r) => r.role).join(', ')} still ${tbd.length > 1 ? 'have placeholder people' : 'has a placeholder person'} — assign real resources, then generate the WBS.`, fix: 'wizard:hrplan', fixLabel: 'Assign people' });
+    const rl = demoResourceLoading();
+    rl.errors.forEach((e) => msgs.push({ level: 'error', title: 'Person allocated over 100%', detail: e + ' Generate WBS is blocked until this is fixed.', fix: 'wizard:hrplan', fixLabel: 'Fix HR plan' }));
+    if (rl.warnings.length) msgs.push({ level: 'warning', title: `Resource loading: ${rl.warnings.length} thing${rl.warnings.length > 1 ? 's' : ''} to check before generating the WBS`, detail: rl.warnings.join(' ') + ' Generate WBS will ask you to confirm.', fix: 'scene:wbs', fixLabel: 'Review loading' });
+    if (!STORE.prefilled) msgs.push({ level: 'warning', title: 'No requirements document analysed', detail: 'The Analysis and Design documents stay empty until an SRS is uploaded.', fix: 'scene:start', fixLabel: 'Upload SRS' });
+    if (p.start_date && Number(p.fp_count) > 0 && !STORE.wbsRows.length) msgs.push({ level: 'info', title: 'WBS not generated yet', detail: 'Everything the WBS needs is in place — generate the JIRA-ready task breakdown.', fix: 'scene:wbs', fixLabel: 'Generate WBS' });
+    const empty = Object.keys(FEEDS).filter((sid) => !(STORE.rows[sid] || []).some(hasContent));
+    if (empty.length) msgs.push({ level: 'info', title: `${empty.length} section${empty.length > 1 ? 's are' : ' is'} empty`, detail: 'Optional, but these feed the artifacts shown — fill them in for complete documents.', chips: empty.map((sid) => ({ fix: 'wizard:' + sid, label: SECTION_BY_ID[sid].title, feeds: FEEDS[sid] })) });
+    return msgs;
+  }
+  function messagesPanelHTML() {
+    const msgs = demoMessages();
+    if (!msgs.length) return `<div class="pm-panel pm-ok"><span>✅</span><div><b>All details complete</b><p>Nothing is missing for the artifacts or the WBS.</p></div></div>`;
+    const counts = msgs.reduce((c, m) => ({ ...c, [m.level]: (c[m.level] || 0) + 1 }), {});
+    return `<div class="pm-panel"><div class="pm-head"><b>Messages</b>${['error', 'warning', 'info'].filter((l) => counts[l]).map((l) => `<span class="pm-count pm-${l}">${counts[l]} ${MESSAGE_LEVELS[l][0]}</span>`).join('')}</div>` +
+      `<ul class="pm-list">${msgs.map((m) => `<li class="pm-item pm-${m.level}"><span class="pm-icon">${MESSAGE_LEVELS[m.level][1]}</span><div class="pm-body"><b>${m.title}</b><p>${m.detail}</p>` +
+        (m.chips ? `<div class="pm-chips">${m.chips.map((c) => `<button type="button" class="pm-chip" data-fix="${c.fix}" title="Used by: ${c.feeds.join(', ')}">${c.label}</button>`).join('')}</div>` : '') +
+        `</div>${m.fix ? `<button type="button" class="btn sm pm-fix" data-fix="${m.fix}">${m.fixLabel} →</button>` : ''}</li>`).join('')}</ul></div>`;
+  }
+  // fix buttons: open the wizard on a step, or jump to a chapter
+  function wireMessageFixes(container) {
+    container.querySelectorAll('[data-fix]').forEach((b) => b.addEventListener('click', () => {
+      const [kind, target] = b.dataset.fix.split(':');
+      if (kind === 'wizard') STORE.wizardOpenAt = target;
+      window.gotoScene(kind === 'wizard' ? 'wizard' : target);
+    }));
+  }
+
   window.__KAG_DEMO_INTERNALS__ = {
     STORE, SECTION_DEFS, SECTION_BY_ID, escapeAttr, sectionTitle, smallTbl, statTile,
     rowsTableHTML, wireRowsTable, refreshRowsTable, formHTML, wireForm, renderSectionContent, computeEffort,
-    SRS_FILE, SRS_SECTIONS, applySrsPrefill
+    SRS_FILE, SRS_SECTIONS, applySrsPrefill, TBD, demoMessages, messagesPanelHTML, wireMessageFixes,
+    demoResourceLoading, resourceLoadingHTML
   };
 })();
 
@@ -552,23 +642,44 @@
   };
 })();
 
-// ---------------- The 12 scenes ----------------
+// ---------------- The 13 scenes ----------------
 (function () {
   'use strict';
   const K = window.__KAG_DEMO_INTERNALS__;
   const K2 = window.__KAG_DEMO_INTERNALS2__;
-  const { STORE, SECTION_BY_ID, refreshRowsTable, computeEffort, SRS_FILE, applySrsPrefill } = K;
+  const { STORE, SECTION_BY_ID, refreshRowsTable, computeEffort, SRS_FILE, applySrsPrefill, TBD, messagesPanelHTML, wireMessageFixes, resourceLoadingHTML } = K;
   const { realDownload, WIZ_STEPS, renderWizardStage, renderDatasheetStage, effortHTML, wireEffort, refreshEffort,
     buildWbsRows, wbsHTML, fillWbsBody, runGenerateWbs, runExtraction, ARTIFACTS, openArtifactModal, artCardHTML,
     LAYOUTS, renderLayoutsStage } = K2;
 
   const root_ = (stage) => stage.querySelector('.scene');
 
+  // Generate WBS as the app does: errors block (message), warnings ask first.
+  // Returns the confirm overlay when one was opened (the autoplay script clicks it).
+  function generateWithChecks(root) {
+    const rl = K.demoResourceLoading();
+    if (rl.errors.length) { Engine.toast('⛔ WBS not generated — fix the resource loading first'); return null; }
+    if (!rl.warnings.length) { runGenerateWbs(root); return null; }
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal-box"><div class="modal-head"><h3>Check resource loading</h3><button type="button" class="modal-close">&times;</button></div>` +
+      `<div class="modal-body"><p style="margin-top:0">Resource loading needs a look before generating the WBS:</p><ul class="rl-issues">${rl.warnings.map((w) => `<li>⚠️ ${w}</li>`).join('')}</ul><p>Generate the WBS anyway?</p></div>` +
+      `<div class="modal-foot"><button type="button" class="btn" data-act="fix">Fix first</button><button type="button" class="btn accent" data-act="anyway">Generate anyway</button></div></div>`;
+    root.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('.modal-close').addEventListener('click', close);
+    overlay.querySelector('[data-act="fix"]').addEventListener('click', () => { close(); Engine.toast('Open the HR plan to adjust the shares, then generate again.'); });
+    overlay.querySelector('[data-act="anyway"]').addEventListener('click', () => { close(); runGenerateWbs(root); });
+    return overlay;
+  }
+
   const DEMO_PROJECTS = [{ key: 'GICPI-V1110', type: 'Web Application' }, { key: 'PAYROLL-2.0', type: 'Migration' }];
   const RECAP = [
     'SRS-first onboarding — upload a requirements doc and the project is created for you',
     'Claude extracts Analysis & Design plus the wizard data (app details, hardware, software, risks, modules…)',
     'Pre-filled New Project wizard — review, complete and save in place',
+    'Messages section — flags missing details, with one-click fixes',
+    'Resource loading check before generating the WBS — blocks over-allocation, flags overloads',
     'Live effort, schedule & FTE calculation engine', 'Data Sheet CRUD across 4 groups, 24 sections',
     'One-click WBS generation for JIRA import', '12 auto-assembled key artifacts',
     '5 export formats — Excel, CSV, HTML, Word, PDF', '3 switchable UI layouts + Protect/Unprotect',
@@ -599,7 +710,7 @@
         root.innerHTML =
           `<div class="scene-kicker">Interactive Product Tour</div><h1>Key Artifact Generator</h1>` +
           `<p class="lead">One master <b>Data Sheet</b> drives everything: a Kick-Off deck, an Application Initiation Note, a full Internal Project Plan, a JIRA-ready WBS — and, powered by Claude, an AI-generated Analysis &amp; Design Document straight from your SRS. Start by uploading the SRS: Claude creates the project and pre-fills the project wizard for you.</p>` +
-          `<div class="chip-row">${['🤖 <b>SRS-First, AI Pre-filled</b>', '🧭 <b>Guided Wizard</b>', '📊 <b>Live Effort &amp; Schedule Calc</b>', '📄 <b>12 Generated Artifacts</b>', '⬇️ <b>5 Export Formats</b>', '🎨 <b>3 Switchable UI Layouts</b>'].map((c) => `<span class="chip">${c}</span>`).join('')}</div>` +
+          `<div class="chip-row">${['🤖 <b>SRS-First, AI Pre-filled</b>', '🧭 <b>Guided Wizard</b>', '🔔 <b>Missing-Detail Messages</b>', '📊 <b>Live Effort &amp; Schedule Calc</b>', '📄 <b>12 Generated Artifacts</b>', '⬇️ <b>5 Export Formats</b>', '🎨 <b>3 Switchable UI Layouts</b>'].map((c) => `<span class="chip">${c}</span>`).join('')}</div>` +
           `<div class="device"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Onboarding</div></div>` +
           `<div class="device-body"><p style="margin:0 0 10px;color:var(--text-dim);font-size:13px">This tour is <b style="color:var(--text)">self-running</b> — sit back and watch, or flip to <b style="color:var(--accent)">Explore</b> up top and click through everything yourself.</p>` +
           `<button type="button" class="btn accent" id="welcomeStart">Start the tour →</button></div></div>`;
@@ -715,7 +826,12 @@
     {
       id: 'wizard', group: 'SRS-First Onboarding', icon: '🧭', title: 'Pre-filled Project Wizard',
       blurb: 'The step-by-step wizard, already filled in from the SRS — review, complete and save.',
-      render(root) { applySrsPrefill(); K2.wizStepIdx = 0; renderWizardStage(root); },
+      render(root) {
+        applySrsPrefill();
+        K2.wizStepIdx = Math.max(0, WIZ_STEPS.findIndex((s) => s.id === STORE.wizardOpenAt));
+        STORE.wizardOpenAt = null;
+        renderWizardStage(root);
+      },
       async script(E, stage) {
         const root = root_(stage);
         applySrsPrefill();
@@ -737,14 +853,11 @@
         await show('hardware', 'Hardware — both servers and their specs were read from the document.');
         await show('risks', 'Risks — three risks extracted; edit or delete any of them.');
         await show('modules', 'Module Details — four functional modules identified by Claude.');
-        const pane = await show('hrplan', 'Human Resource Plan — org data an SRS can’t contain; add your team here.', 500);
-        if (!STORE.rows.hrplan.some((r) => r.name === 'Meera Iyer')) {
-          STORE.rows.hrplan.push({});
-          refreshRowsTable(pane, 'hrplan', SECTION_BY_ID.hrplan.cols);
-          const inputs = pane.querySelectorAll('.rows-body tr:last-child input');
-          await E.typeInto(inputs[0], 'Team Lead');
-          await E.typeInto(inputs[1], 'Meera Iyer');
-          await E.typeInto(inputs[2], '50');
+        const pane = await show('hrplan', 'Human Resource Plan — an SRS never names the team, so a standard role-wise team was added with placeholder people.', 700);
+        const pmIdx = STORE.rows.hrplan.findIndex((r) => r.role === 'Project Owner' && r.name === TBD);
+        if (pmIdx >= 0) {
+          E.setCaption('Assigning a real person to the Project Owner role…', 'GUIDE');
+          await E.typeInto(pane.querySelectorAll(`.rows-body tr[data-i="${pmIdx}"] input`)[1], 'Meera Iyer');
         }
         K2.wizStepIdx = WIZ_STEPS.length - 1; renderWizardStage(root);
         await E.wait(300);
@@ -752,6 +865,49 @@
         E.toast('🎉 Project ' + STORE.project.project_key + ' saved!');
         E.setCaption('Saved in place — the same project, now complete. Every artifact picks up this data.', 'GUIDE');
         await E.wait(900);
+      }
+    },
+    {
+      id: 'messages', group: 'SRS-First Onboarding', icon: '🔔', title: 'Messages — What’s Missing',
+      blurb: 'A Messages section flags missing details, each with a button that jumps straight to the fix.',
+      render(root) {
+        applySrsPrefill();
+        root.innerHTML = `<h1>Messages — What’s Missing</h1><p class="lead">The project home, classic Home and Modern layout all show a <b>Messages</b> section: what’s still missing for the artifacts and the WBS, how serious it is, and a button that jumps straight to the fix. It updates as you complete things.</p>` +
+          `<div class="device" style="max-width:760px"><div class="device-bar"><div class="device-dots"><i></i><i></i><i></i></div><div class="device-url">kag.local — Analysis &amp; Design</div></div>` +
+          `<div class="device-body"><div style="font-weight:700;font-size:16px;margin-bottom:2px">Analysis &amp; Design</div><p class="note" style="margin:0 0 12px">${STORE.project.project_key} — generate, preview and download your project artifacts.</p>` +
+          `<div id="pmHolder">${messagesPanelHTML()}</div>` +
+          `<div class="card-grid" style="margin-top:12px">${['Analysis Document', 'Design Document'].map((n) => `<div class="art-card"><span class="badge">AI-GENERATED</span><h3>${n}</h3><p>Preview &amp; download →</p></div>`).join('')}</div></div></div>` +
+          `<div class="stat-grid" style="margin-top:14px">${[['⛔', 'Action needed', 'Blocks output — e.g. no Start Date or an FP Count of 0'], ['⚠️', 'Recommended', 'Placeholder team members, no SRS analysed, empty application details'], ['ℹ️', 'Tip', 'WBS not generated yet, empty optional sections and the artifacts they feed']].map(([i, t, d]) => `<div class="stat-tile" style="text-align:left"><b style="font-size:14px;font-family:var(--sans);color:var(--text)">${i} ${t}</b><span>${d}</span></div>`).join('')}</div>`;
+        wireMessageFixes(root.querySelector('#pmHolder'));
+      },
+      async script(E, stage) {
+        const root = root_(stage);
+        const holder = root.querySelector('#pmHolder');
+        const refresh = () => { holder.innerHTML = messagesPanelHTML(); wireMessageFixes(holder); };
+        for (const li of holder.querySelectorAll('.pm-item')) {
+          const title = li.querySelector('b').textContent;
+          E.setCaption(title + (li.classList.contains('pm-warning') ? ' — recommended before sharing the artifacts.' : li.classList.contains('pm-error') ? ' — this blocks output.' : ' — a tip.'), 'GUIDE');
+          await E.pulse(li, 900);
+        }
+        const assign = holder.querySelector('[data-fix="wizard:hrplan"]');
+        if (assign) {
+          await E.clickFx(assign);
+          E.setCaption('“Assign people” opens the wizard on the HR plan — here we assign both developers…', 'GUIDE');
+          await E.wait(500);
+          for (const [role, who] of [['Developer1', 'Ravi Menon'], ['Developer2', 'Anita Rao']]) {
+            const r = STORE.rows.hrplan.find((x) => x.role === role && x.name === TBD);
+            if (r) r.name = who;
+          }
+          refresh();
+          E.setCaption('…and the message updates: fewer roles left to assign.', 'LIVE');
+          await E.pulse(holder.querySelector('.pm-warning') || holder.querySelector('.pm-panel'), 900);
+        }
+        const wbsBtn = holder.querySelector('[data-fix="scene:wbs"]');
+        if (wbsBtn) {
+          await E.pulse(wbsBtn, 700);
+          E.setCaption('Everything the WBS needs is in place — “Generate WBS” jumps straight to it (see the Generate chapter).', 'GUIDE');
+          await E.wait(900);
+        }
       }
     },
     {
@@ -828,18 +984,33 @@
     },
     {
       id: 'wbs', group: 'Generate', icon: '🧩', title: 'Generate WBS for JIRA',
-      blurb: 'Generate a JIRA-ready WBS from HR-plan resources and task templates.',
+      blurb: 'Resource loading is checked first, then a JIRA-ready WBS is generated from HR-plan roles and task templates.',
       render(root) {
         root.innerHTML = `<h1>Generate WBS (for JIRA)</h1>` +
-          `<p class="lead">Per HR-plan resource, task templates are copied and scaled by % contribution — meetings and fixed-share tasks are excluded from scaling. Ready to paste into a JIRA CSV import.</p>` +
-          `<button type="button" class="btn accent" id="genWbsBtn">🧩 Generate WBS</button>` +
+          `<p class="lead">Per HR-plan resource, task templates are copied and scaled by % contribution — meetings and fixed-share tasks are excluded from scaling. Before anything is written, each person’s WBS hours are checked against their working time: over-allocation blocks generation, overloads ask you to confirm.</p>` +
+          `<div id="rlHolder">${resourceLoadingHTML()}</div>` +
+          `<button type="button" class="btn accent" id="genWbsBtn" style="margin-top:14px">🧩 Generate WBS</button>` +
           `<div id="wbsHolder" style="margin-top:14px">${wbsHTML(STORE.wbsRows)}</div>`;
-        root.querySelector('#genWbsBtn').addEventListener('click', () => runGenerateWbs(root));
+        root.querySelector('#genWbsBtn').addEventListener('click', () => generateWithChecks(root));
         if (STORE.wbsRows.length) fillWbsBody(root);
       },
       async script(E, stage) {
         const root = root_(stage);
+        E.setCaption('Resource loading: each person’s WBS hours vs their full-time working hours.', 'LIVE');
+        await E.pulse(root.querySelector('#rlHolder .rl-panel'), 900);
+        const over = root.querySelector('#rlHolder tr[data-status="overloaded"]');
+        if (over) {
+          E.setCaption('Developer1’s tasks don’t fit their working time — the message says exactly how far to lower their %.', 'GUIDE');
+          await E.pulse(over, 1100);
+        }
         await E.clickFx(root.querySelector('#genWbsBtn'));
+        const overlay = generateWithChecks(root);
+        if (overlay) {
+          E.setCaption('Warnings don’t block — Generate WBS asks: fix first, or generate anyway?', 'GUIDE');
+          await E.wait(1600);
+          await E.clickFx(overlay.querySelector('[data-act="anyway"]'));
+          overlay.remove();
+        }
         E.setCaption('Copying task templates per staffed role, scaled by % contribution…', 'LIVE');
         await runGenerateWbs(root);
         await E.wait(700);

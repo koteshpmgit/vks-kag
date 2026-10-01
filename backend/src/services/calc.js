@@ -124,7 +124,7 @@ function computeProject(project, phaseRows, hrRows) {
   // resource summary (Data Sheet X20..Z28): FTE per role from hr plan
   const roleMap = {};
   for (const h of hrRows || []) {
-    const role = h.role_acronym || '';
+    const role = String(h.role_acronym || '').trim().toUpperCase(); // "dev" and "DEV" are one role
     if (!roleMap[role]) roleMap[role] = { role, count: 0, fte: 0 };
     roleMap[role].count += 1;
     roleMap[role].fte += (Number(h.contribution_pct) || 0) / 100;

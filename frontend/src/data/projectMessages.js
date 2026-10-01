@@ -25,6 +25,10 @@ const FEEDS = {
   risks: ['Kick-Off', 'IPP-Scope Management']
 };
 
+// Role acronyms match task templates case-/whitespace-insensitively, as in
+// backend/src/services/wbs.js ("dev" = "DEV").
+const roleKey = (r) => String(r || '').trim().toUpperCase();
+
 const isPlaceholder = (h) => /^TBD-/i.test(h.resource_ipn || '') || /^to be assigned$/i.test((h.resource_name || '').trim());
 
 // Rows with actual content - blank rows (e.g. added only to pass the wizard's
@@ -76,6 +80,55 @@ export function projectMessages(data) {
     }
   }
 
+  // WBS tasks are copied per HR-plan role from the role's task templates - a
+  // role with no templates contributes nothing.
+  const templateRoles = new Set((data.templateRoles || []).map(roleKey));
+  let rolesBlockWbs = false;
+  if (hrplan.length && templateRoles.size) {
+    const noTemplates = hrplan.filter((h) => !templateRoles.has(roleKey(h.role_acronym)));
+    const label = (h) => (String(h.role_acronym || '').trim() ? `"${String(h.role_acronym).trim()}"` : '(blank)') + (h.resource_name ? ` - ${h.resource_name}` : '');
+    const valid = [...templateRoles].join(', ');
+    if (noTemplates.length === hrplan.length) {
+      rolesBlockWbs = true;
+      msgs.push({
+        id: 'hr-no-template-roles', level: 'error', fix: 'hrplan', fixLabel: 'Fix roles',
+        title: 'No HR plan role has WBS task templates',
+        detail: `Generate WBS will produce no tasks. Roles in the plan: ${noTemplates.map(label).join(', ')}. Use a Role Acronym that has templates: ${valid}.`
+      });
+    } else if (noTemplates.length) {
+      msgs.push({
+        id: 'hr-some-template-roles', level: 'info', fix: 'hrplan', fixLabel: 'Review roles',
+        title: `${noTemplates.length} HR plan role${noTemplates.length > 1 ? 's get' : ' gets'} no WBS tasks`,
+        detail: `${noTemplates.map(label).join(', ')} ${noTemplates.length > 1 ? 'have' : 'has'} no task templates - fine for oversight roles, otherwise use one of: ${valid}.`
+      });
+    }
+  }
+
+  // Resource loading (computed by the backend from the same plan Generate WBS uses):
+  // errors block generation, warnings need confirming, info is a tip.
+  const rl = data.resourceLoading;
+  if (rl?.ready && !rolesBlockWbs) {
+    rl.errors.forEach((e, i) => msgs.push({
+      id: `rl-error-${i}`, level: 'error', fix: 'hrplan', fixLabel: 'Fix HR plan',
+      title: { 'over-allocated': 'Person allocated over 100%', 'invalid-share': 'Invalid % contribution', 'dates-reversed': 'Team member dates are reversed', 'no-working-days': 'No working days for assigned tasks' }[e.code] || 'Resource loading problem',
+      detail: e.message + ' Generate WBS is blocked until this is fixed.'
+    }));
+    if (rl.warnings.length) {
+      msgs.push({
+        id: 'rl-warnings', level: 'warning', fix: 'hrplan', fixLabel: 'Review HR plan',
+        title: `Resource loading: ${rl.warnings.length} thing${rl.warnings.length > 1 ? 's' : ''} to check before generating the WBS`,
+        detail: rl.warnings.map((w) => '• ' + w.message).join('\n') + '\nGenerate WBS will ask you to confirm these.'
+      });
+    }
+    if (rl.info.length) {
+      msgs.push({
+        id: 'rl-info', level: 'info', fix: 'hrplan', fixLabel: 'Review HR plan',
+        title: `${rl.info.length} team member${rl.info.length > 1 ? 's are' : ' is'} lightly loaded`,
+        detail: rl.info.map((w) => '• ' + w.message).join('\n')
+      });
+    }
+  }
+
   if (!analysis && !design) {
     msgs.push({
       id: 'no-srs', level: 'warning', fix: 'srs', fixLabel: 'Upload SRS',
@@ -92,7 +145,7 @@ export function projectMessages(data) {
     });
   }
 
-  const canGenerateWbs = project.start_date && Number(project.fp_count) > 0;
+  const canGenerateWbs = project.start_date && Number(project.fp_count) > 0 && !rolesBlockWbs && !(rl?.errors || []).length;
   if (canGenerateWbs && !(data.wbs || []).length) {
     msgs.push({
       id: 'wbs', level: 'info', fix: 'wbs', fixLabel: 'Generate WBS',
@@ -111,7 +164,8 @@ export function projectMessages(data) {
     });
   }
 
-  return msgs;
+  const rank = { error: 0, warning: 1, info: 2 };
+  return msgs.sort((a, b) => rank[a.level] - rank[b.level]); // stable: keeps order within a level
 }
 
 export const MESSAGE_LEVELS = {

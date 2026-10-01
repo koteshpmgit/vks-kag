@@ -36,12 +36,14 @@ Analysis/Design documents.
 
   Without `ANTHROPIC_API_KEY` the upload still works and the user can continue manually.
 - **Messages panel** — on the project home (Analysis & Design), the classic editor's Home
-  and at the top of the Modern layout, a *Messages* section lists what's missing and how to fix it, each with a button
-  that jumps to the right wizard step or section:
-  - **Action needed** (blocks output): no Start Date, FP Count of 0.
+  and at the top of the Modern layout, a *Messages* section lists what's missing and how
+  to fix it, each with a button that jumps to the right wizard step or section:
+  - **Action needed** (blocks output): no Start Date, FP Count of 0, or no HR plan role that
+    has WBS task templates (Generate WBS would produce nothing).
   - **Recommended**: no HR plan, or placeholder `TBD-…` people in it; no SRS analysed;
     empty application details.
-  - **Tip**: WBS not generated yet; empty optional sections, with the artifacts each one feeds.
+  - **Tip**: WBS not generated yet; HR plan roles without task templates (normal for oversight
+    roles like VO); empty optional sections, with the artifacts each one feeds.
 
   Logic lives in `frontend/src/data/projectMessages.js`.
 - **Multiple layouts** over the same data:
@@ -57,11 +59,15 @@ Analysis/Design documents.
 - **Artifacts** — Kick-Off, AIN, AIN-\<Project\>, IPP sections, WBS for JIRA, Folder
   Structure, Analysis Document, Design Document.
 - **Export** — every artifact downloads as `.xls` (default), `.csv`, `.html`, `.doc` or `.pdf`.
+  Downloads go through `API.download()` (`frontend/src/api/client.js`), which sends the login
+  token; a plain link to an `/api/...` URL would get `401`.
 - **WBS & Timesheet** — generate, edit and export the JIRA WBS and a per-resource timesheet.
-- **Interactive demo** — a self-running, 12-chapter product tour in [demo/](demo/) (open
+- **Interactive demo** — a self-running, 13-chapter product tour in [demo/](demo/) (open
   `demo/index.html` in a browser; no backend needed). It walks through the SRS-first flow
-  (upload → review → pre-filled wizard), then the Data Sheet, effort calculation, WBS,
-  artifacts, export and layouts. Switch to **Explore** to click through it yourself.
+  (upload → review → pre-filled wizard → Messages), then the Data Sheet, effort
+  calculation, WBS (with the resource loading check and its "Generate anyway" prompt),
+  artifacts, export and layouts. Switch to **Explore** to click through it
+  yourself; the Messages chapter's fix buttons really open the wizard on the right step.
 
 ## SRS upload flow
 
@@ -80,14 +86,38 @@ Login ─▶ Upload Requirements Document ─▶ Review ─▶ Open New Project 
   section only when it has no rows yet. Re-uploading an SRS to the same project is safe.
 - **Team plan for the WBS:** an SRS never names the team, but the WBS is generated per
   HR-plan role. Each SRS project therefore starts with a standard role-wise HR plan
-  (PO, ODO, TL, 2 × DEV, TSTL, TSTE, PQAO, with placeholder people `TBD-<ROLE>n` marked
+  (PO 30%, ODO 15%, TL 20%, 2 × DEV 80%, TSTL 20%, TSTE 70%, PQAO 3%, with placeholder people `TBD-<ROLE>n` marked
   "To be assigned"). Edit the shares and assign real people, then re-generate. A project with
-  no HR plan gets the same plan when you click **Generate WBS**.
+  no HR plan gets the same plan when you click **Generate WBS**. The **Messages** panel lists
+  the roles still marked "To be assigned" until you replace them.
 - **What the SRS can't provide:** usually the start date (it's picked up when the SRS states
   one), and organisational data like process planning, decision analysis and the kick-off
   agenda. The wizard's "at least 2 rows per list step" rule still applies to those steps.
 - **Generate WBS needs** a start date and an FP count above 0. If either is missing, it
   says so and leaves any existing WBS untouched.
+
+## Resource loading check (before generating the WBS)
+
+Before writing the WBS, the backend computes the tasks Generate *would* create and checks
+each person in the HR plan against them (`GET /api/projects/:id/resource-loading`; logic in
+`backend/src/services/wbs.js`). People holding several roles are grouped by IPN.
+
+| | Check | What Generate WBS does |
+|---|---|---|
+| ⛔ Error | A person is allocated **over 100%** across their roles | Refuses, lists the people to fix |
+| ⛔ Error | A role with task templates has a **% contribution outside 1–100** (0% → zero-hour tasks) | Refuses |
+| ⛔ Error | A member's **end date is before their start date**, or they have tasks but no working days | Refuses |
+| ⚠️ Warning | **Overloaded:** their WBS hours exceed their full-time working hours (working days × 8h) — the message gives the highest % that fits | Asks **Fix first / Generate anyway** |
+| ⚠️ Warning | A member with tasks has **no Resource IPN** (blank JIRA assignee) | Asks |
+| ⚠️ Warning | A member's dates fall **outside the project schedule** | Asks |
+| ℹ️ Tip | **Lightly loaded:** their tasks fill under 50% of the hours their % books them for | — |
+
+Load is measured against **full-time** hours because GenWBS2 gives each person
+"role task hours × their %": comparing with the %-booked hours would cancel the % out. The
+WBS panel shows a **Resource loading** table (allocation, working days, WBS hours, booked
+hours, full-time hours, load, status), and the Messages panel lists the errors and warnings
+with a button to the HR plan. Nothing is written when generation is refused, so an existing
+WBS is kept.
 - **Timing:** extraction usually takes 30–90 seconds. Nginx waits up to 5 minutes for it.
 - **If extraction fails** (for example a temporary Anthropic API error), the project is
   already created: **Try Again** retries on the same project, or **Continue without AI**.
@@ -323,7 +353,9 @@ GRANT_TO=<app_role> PGHOST=... PGUSER=postgres PGPASSWORD=... node src/db/grant-
 3. **Review** what Claude extracted.
 4. **Open New Project Wizard** to check the pre-filled data, add the start date and any
    organisational data, and **Save Project**. (Or skip straight to Analysis & Design.)
-5. **Analysis & Design** shows the project's documents; switch to
+5. **Analysis & Design** shows the project's documents. Work through its **Messages**
+   section: each message says what's missing (start date, FP count, unassigned team
+   members, empty sections…) and has a button that takes you to the fix. Switch to
    **Advanced / Full Editor** (`/classic`) for the full Data Sheet and all artifacts.
 6. **Generate WBS** builds the `<ProjectKey>-WBS` JIRA-upload table; the timesheet can be
    generated from it.
@@ -347,7 +379,8 @@ POST /api/srs                             (multipart "file" + optional "project_
 POST /api/projects/:id/srs                (multipart, field "file")
 GET  /api/projects/:id/srs
 
-POST /api/projects/:id/wbs/generate       GET|POST /api/projects/:id/wbs
+POST /api/projects/:id/wbs/generate[?force=1]   (force = accept resource-loading warnings)
+GET  /api/projects/:id/resource-loading   GET|POST /api/projects/:id/wbs
 PUT|DELETE /api/projects/:id/wbs/:rowId   GET  /api/wbs-template[?format=csv]
 
 POST /api/projects/:id/timesheet/generate GET|POST /api/projects/:id/timesheet
@@ -369,7 +402,12 @@ training, process, environments, dar, agenda, modules`.
 | "Failed to start — Invalid or expired session" | The login token in the browser is no longer valid (expired, `JWT_SECRET` changed, or the database was reset) | The app returns to `/login` automatically. If an old cached copy of the app is still running, press **Ctrl+Shift+R** once. After `docker compose down -v`, **sign up again**: accounts were wiped. |
 | SRS upload fails with "File is too large" / `413` | File over 10 MB | Upload a smaller file, or raise both `client_max_body_size` (Nginx) and `SRS_MAX_MB` (backend) |
 | SRS upload fails with `502` / `504` | The backend took longer than Nginx waits | Nginx waits 300 s (`proxy_read_timeout`); rebuild the frontend image if yours predates this. The project may still have been created, so check the project list before re-uploading. |
+| A download button does nothing / shows "Download failed" | Older builds navigated to `/api/...` without the login token (`401`) | Rebuild the frontend (`docker compose up -d --build frontend`) and reload with **Ctrl+Shift+R** |
+| Not sure what's still missing | — | Check the **Messages** section on the project home (or classic Home / top of the Modern layout); every item has a fix button |
+| Generate WBS: "Cannot generate the WBS - fix the resource loading…" | A person is over 100%, a % is outside 1–100, or member dates are reversed | Fix the listed people in the HR plan (see [Resource loading check](#resource-loading-check-before-generating-the-wbs)) |
+| Generate WBS asks "Check resource loading" | Someone's WBS hours exceed their full-time hours, has no IPN, or is outside the schedule | **Fix first** (the message says how), or **Generate anyway** |
 | Generate WBS: "Cannot generate the WBS yet…" | The project has no Start Date and/or its FP Count is 0 | Set them in the wizard (Create Project) or Data Sheet (Projects Summary), then generate again |
+| Generate WBS: "No WBS tasks were generated: none of the HR plan roles … has task templates" | The HR plan's Role Acronyms don't match any task template role (`ODO, PO, TL, DEV, TSTE, TSTL, PQAO`) | Fix the Role Acronyms in the HR plan. Matching ignores case and spaces (`dev` = `DEV`), and the Messages panel flags this before you generate |
 | WBS tasks are assigned to `TBD-DEV1` etc. | The default team plan was used | Assign real resources in the HR plan and re-generate |
 | "ANTHROPIC_API_KEY not configured" | Key not passed to the backend container | Put it in the repo-root `.env` and run `docker compose up -d backend` |
 | "Could not read this PDF" | Scanned/image-only or unusual PDF | Re-save as PDF, or upload a `.txt`/`.md` export |

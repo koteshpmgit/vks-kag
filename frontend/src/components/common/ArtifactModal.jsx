@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal } from './Dialogs.jsx';
+import API from '../../api/client.js';
+import { Modal, useDialogs } from './Dialogs.jsx';
 import { useProjectData } from '../../context/ProjectDataContext.jsx';
 import WbsPanel from './WbsPanel.jsx';
 
@@ -10,6 +11,7 @@ const FORMATS = [
 export default function ArtifactModal({ artifact, onClose }) {
   const { data, projectId } = useProjectData();
   const isWbs = artifact.id === 'wbsjira';
+  const { msgBox } = useDialogs();
 
   return (
     <Modal
@@ -24,7 +26,8 @@ export default function ArtifactModal({ artifact, onClose }) {
               className="btn btn-light btn-sm"
               onClick={() => {
                 const q = fmt === 'xls' ? '' : `?format=${fmt}`;
-                window.location.href = `/api/projects/${projectId}/export/${encodeURIComponent(artifact.name)}${q}`;
+                API.download(`/projects/${projectId}/export/${encodeURIComponent(artifact.name)}${q}`)
+                  .catch((e) => msgBox(e.message, { title: 'Download failed' }));
               }}
             >{label}</button>
           ))}

@@ -38,7 +38,7 @@ export function DialogProvider({ children }) {
         <div className="msgbox-overlay">
           <div className="msgbox">
             <div className="mb-title">{msgBoxState.title}</div>
-            <div className="mb-body">{msgBoxState.text}</div>
+            <div className="mb-body" style={{ whiteSpace: 'pre-wrap' }}>{msgBoxState.text}</div>
             <div className="mb-actions">
               {msgBoxState.buttons.map((b) => (
                 <button key={b} autoFocus={b === msgBoxState.buttons[0]} onClick={() => closeMsgBox(b)}>{b}</button>

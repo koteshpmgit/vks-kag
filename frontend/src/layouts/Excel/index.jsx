@@ -11,6 +11,7 @@ import FormulaBar from './FormulaBar.jsx';
 import LeftPanel from './LeftPanel.jsx';
 import TabBar from './TabBar.jsx';
 import StatusBar from './StatusBar.jsx';
+import { generateWbsWithChecks } from '../../components/common/generateWbs.js';
 import DataSheet from './DataSheet.jsx';
 
 export default function ExcelLayout() {
@@ -60,7 +61,12 @@ export default function ExcelLayout() {
     const ans = await msgBox(`Proceed for copy ${proj}-${name} to desktop`, { title: 'Confirm selection', buttons: ['OK', 'Cancel'] });
     if (ans !== 'OK') return;
     const artifactName = name === ainTabLabel ? 'AIN-Project' : name;
-    window.location.href = `/api/projects/${projectId}/export/${encodeURIComponent(artifactName)}`;
+    try {
+      await API.download(`/projects/${projectId}/export/${encodeURIComponent(artifactName)}`);
+    } catch (e) {
+      await msgBox(e.message, { title: 'Download failed' });
+      return;
+    }
     await msgBox(`${proj}-${name} has been copied to Desktop`);
   };
 
@@ -71,14 +77,8 @@ export default function ExcelLayout() {
       if (ans !== 'OK') return;
     }
     setStatus('Generating WBS…');
-    let r;
-    try {
-      r = await API.post(`/projects/${projectId}/wbs/generate`);
-    } catch (e) {
-      setStatus('Ready');
-      await msgBox(e.message, { title: 'WBS not generated' });
-      return;
-    }
+    const r = await generateWbsWithChecks(projectId, { msgBox, confirmDialog: msgBox });
+    if (!r) { setStatus('Ready'); return; }
     await reload();
     setActive('WBS For JIRA');
     await msgBox(`WBS genarated for the project - ${proj}-WBS (${r.generated} tasks)` + (r.seededTeam ? `
@@ -105,7 +105,7 @@ A default team plan was added to the HR plan (people 'To be assigned') - assign 
       `Timesheet generated for ${proj}:\n\n${ts.entries.length} day-wise entries\n${ts.totalHours} total hours\n` +
       `${ts.resources} resources across ${ts.daysCovered} working days\n\nDownload as Excel (.xls)?`,
       { title: 'Timesheet generated', buttons: ['OK', 'Cancel'] });
-    if (ans === 'OK') window.location.href = `/api/projects/${projectId}/timesheet/export`;
+    if (ans === 'OK') API.download(`/projects/${projectId}/timesheet/export`).catch((e) => msgBox(e.message, { title: 'Download failed' }));
   };
 
   const addListRow = async (kind) => {
@@ -125,7 +125,7 @@ A default team plan was added to the HR plan (people 'To be assigned') - assign 
         onActivate={setActive}
         onCopyArtifact={copyArtifact}
         currentArtifact={artifact}
-        onExportWbsCsv={() => { window.location.href = `/api/projects/${projectId}/export/WBS%20For%20JIRA?format=csv`; }}
+        onExportWbsCsv={() => API.download(`/projects/${projectId}/export/WBS%20For%20JIRA?format=csv`).catch((e) => msgBox(e.message, { title: 'Download failed' }))}
         onRefresh={reload}
         onAddListRow={addListRow}
       />

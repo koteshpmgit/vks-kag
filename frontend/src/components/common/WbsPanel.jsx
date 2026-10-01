@@ -5,6 +5,8 @@ import { useDialogs } from './Dialogs.jsx';
 import { Modal } from './Dialogs.jsx';
 import WBSForJira from '../artifacts/WBSForJira.jsx';
 import CrudTable from './CrudTable.jsx';
+import ResourceLoading from './ResourceLoading.jsx';
+import { generateWbsWithChecks } from './generateWbs.js';
 
 const TASK_COLS = [
   { key: 'assignee', label: 'Assignee' }, { key: 'summary', label: 'Task Summary' },
@@ -27,13 +29,8 @@ export default function WbsPanel() {
       const ans = await confirmDialog('Re-generate the WBS? Existing tasks will be replaced.', { title: 'Confirm WBS re-generation', buttons: ['Re-generate', 'Cancel'] });
       if (ans !== 'Re-generate') return;
     }
-    let r;
-    try {
-      r = await API.post(`/projects/${projectId}/wbs/generate`);
-    } catch (e) {
-      await msgBox(e.message, { title: 'WBS not generated' });
-      return;
-    }
+    const r = await generateWbsWithChecks(projectId, { msgBox, confirmDialog });
+    if (!r) return;
     await reload();
     if (!r.seededTeam) toast(`WBS generated (${r.generated} tasks)`);
     else await msgBox(`WBS generated (${r.generated} tasks). A default team plan was added to the HR plan (people 'To be assigned') - assign real resources there and re-generate.`, { title: 'Default team added' });
@@ -63,6 +60,7 @@ export default function WbsPanel() {
 
   return (
     <div>
+      <ResourceLoading loading={data.resourceLoading} />
       <WBSForJira
         data={data} projectId={projectId}
         onGenerateWbs={generateWbs}
@@ -104,6 +102,8 @@ export default function WbsPanel() {
 
 function TimesheetModal({ onClose }) {
   const { projectId } = useProjectData();
+  const { msgBox } = useDialogs();
+  const download = (path) => API.download(path).catch((e) => msgBox(e.message, { title: 'Download failed' }));
   const [ts, setTs] = useState(null);
 
   React.useEffect(() => { API.get(`/projects/${projectId}/timesheet`).then(setTs); }, [projectId]);
@@ -114,8 +114,8 @@ function TimesheetModal({ onClose }) {
       lg
       onClose={onClose}
       footer={<>
-        <button className="btn btn-light" onClick={() => { window.location.href = `/api/projects/${projectId}/timesheet/export?format=csv`; }}>Download CSV</button>
-        <button className="btn btn-accent" onClick={() => { window.location.href = `/api/projects/${projectId}/timesheet/export`; }}>Download Excel</button>
+        <button className="btn btn-light" onClick={() => download(`/projects/${projectId}/timesheet/export?format=csv`)}>Download CSV</button>
+        <button className="btn btn-accent" onClick={() => download(`/projects/${projectId}/timesheet/export`)}>Download Excel</button>
       </>}
     >
       {!ts ? <p>Loading…</p> : (

@@ -4,7 +4,7 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 const db = require('../db');
 const { computeProject } = require('../services/calc');
-const { generateWbs, seedDefaultHrPlan } = require('../services/wbs');
+const { generateWbs, seedDefaultHrPlan, resourceLoading } = require('../services/wbs');
 const { rowsToXls, rowsToCsv, rowsToHtml, rowsToPdf } = require('../services/exporter');
 const { buildArtifactRows } = require('../services/artifacts');
 const { generateTimesheet, getTimesheet, timesheetRows, dayNameFor } = require('../services/timesheet');
@@ -24,7 +24,7 @@ const uploadSingle = (field) => (req, res, next) => upload.single(field)(req, re
 // them as-is instead of a 500
 const wrap = (fn) => (req, res) => fn(req, res).catch((e) => {
   if (!e.status) console.error(e);
-  res.status(e.status || 500).json({ error: e.message });
+  res.status(e.status || 500).json({ error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.details ? { details: e.details } : {}) });
 });
 
 // :id / :rowId are always numeric primary keys - reject non-numeric values with a
@@ -250,8 +250,14 @@ router.get('/projects/:id/computed', wrap(async (req, res) => {
 
 // ---------------- WBS (Generate WBS button / GenWBS2 macro) ----------------
 // registered before the generic ':coll' routes so 'wbs' is not swallowed by them
+// ?force=1 generates despite resource-loading warnings (the user confirmed them);
+// resource-loading errors always block.
 router.post('/projects/:id/wbs/generate', wrap(async (req, res) => {
-  res.json(await generateWbs(req.params.id));
+  res.json(await generateWbs(req.params.id, { force: ['1', 'true'].includes(String(req.query.force)) }));
+}));
+
+router.get('/projects/:id/resource-loading', wrap(async (req, res) => {
+  res.json(await resourceLoading(req.params.id));
 }));
 
 router.get('/projects/:id/wbs', wrap(async (req, res) => {

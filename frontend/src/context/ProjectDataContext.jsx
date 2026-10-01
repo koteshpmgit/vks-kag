@@ -16,17 +16,23 @@ async function loadAll(projectId) {
     API.get('/resources'),
     ...COLLECTIONS.map((c) => API.get(`/projects/${projectId}/${c}`))
   ]);
-  const [stdRoles, stdTools, matrix, folders, wbs, srs] = await Promise.all([
+  const [stdRoles, stdTools, matrix, folders, wbs, srs, taskTemplates, resourceLoading] = await Promise.all([
     API.get('/standards/roles'),
     API.get('/standards/tools'),
     API.get('/standards/stakeholder-matrix'),
     API.get('/standards/folder-structure'),
     API.get(`/projects/${projectId}/wbs`),
-    API.get(`/projects/${projectId}/srs`)
+    API.get(`/projects/${projectId}/srs`),
+    API.get('/standards/task-templates'),
+    API.get(`/projects/${projectId}/resource-loading`)
   ]);
   const data = {
     application, project, computed, resources, stdRoles, stdTools, matrix, folders, wbs,
-    srsDocument: srs.document, analysis: srs.analysis, design: srs.design
+    srsDocument: srs.document, analysis: srs.analysis, design: srs.design,
+    // role acronyms that have WBS task templates (Messages panel checks the HR plan against these)
+    templateRoles: [...new Set(taskTemplates.map((t) => t.role_acronym))],
+    // per-person allocation vs WBS hours, checked before generating the WBS (backend services/wbs.js)
+    resourceLoading
   };
   COLLECTIONS.forEach((c, i) => { data[c] = colls[i]; });
   return data;

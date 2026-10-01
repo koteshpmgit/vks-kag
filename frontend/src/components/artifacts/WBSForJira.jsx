@@ -1,5 +1,6 @@
 import React from 'react';
-import { isoDate } from '../../api/client.js';
+import API, { isoDate } from '../../api/client.js';
+import { useDialogs } from '../common/Dialogs.jsx';
 
 // "WBS For JIRA" artifact. When add/edit/delete callbacks are supplied (Modern/WebApp)
 // rows get CRUD controls; Excel UI omits them and renders read-only, matching the
@@ -9,6 +10,8 @@ export default function WBSForJira({
   onAddTask, onEditTask, onDeleteTask
 }) {
   const { project, wbs } = data;
+  const { msgBox } = useDialogs();
+  const download = (path) => API.download(path).catch((e) => msgBox(e.message, { title: 'Download failed' }));
   const canCrud = typeof onEditTask === 'function';
   const total = wbs.reduce((s, w) => s + Number(w.est_hours || 0), 0);
 
@@ -25,13 +28,13 @@ export default function WBSForJira({
           <button className="addrow-btn dl-icon" title="Add WBS task" aria-label="Add WBS task" onClick={onAddTask}>&#65291;</button>
         )}
         <button className="addrow-btn dl-icon" title="Download .xls" aria-label="Download .xls"
-          onClick={() => { window.location.href = `/api/projects/${projectId}/export/WBS%20For%20JIRA`; }}>&#128215;</button>
+          onClick={() => download(`/projects/${projectId}/export/WBS%20For%20JIRA`)}>&#128215;</button>
         <button className="addrow-btn dl-icon" title="Download .csv" aria-label="Download .csv"
-          onClick={() => { window.location.href = `/api/projects/${projectId}/export/WBS%20For%20JIRA?format=csv`; }}>&#128196;</button>
+          onClick={() => download(`/projects/${projectId}/export/WBS%20For%20JIRA?format=csv`)}>&#128196;</button>
         <button className="addrow-btn dl-icon" title="Blank Template .xls" aria-label="Blank Template .xls"
-          onClick={() => { window.location.href = '/api/wbs-template'; }}>&#128203;</button>
+          onClick={() => download('/wbs-template')}>&#128203;</button>
         <button className="addrow-btn dl-icon" title="Blank Template .csv" aria-label="Blank Template .csv"
-          onClick={() => { window.location.href = '/api/wbs-template?format=csv'; }}>&#128466;</button>
+          onClick={() => download('/wbs-template?format=csv')}>&#128466;</button>
       </div>
       {!wbs.length ? (
         <div className="note">No WBS generated yet. Click "Generate WBS" — every task template matching each HR-plan role will be copied per resource, with estimates scaled by % contribution (meetings excluded), exactly like the GenWBS2 macro.</div>
