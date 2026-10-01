@@ -1,0 +1,85 @@
+WEBVTT
+
+1
+00:00:00.016 --> 00:00:11.145
+SRS-first onboarding — Sign up, upload a requirements document and let Claude create and pre-fill the project — then complete it in the wizard and generate the WBS.
+
+2
+00:00:11.145 --> 00:00:15.463
+Create an account — each user only sees their own projects.
+
+3
+00:00:15.463 --> 00:00:23.262
+The first screen after login: upload the SRS (.pdf, .txt or .md, up to 10 MB).
+
+4
+00:00:23.262 --> 00:00:27.657
+The Project Key defaults to the file name — rename it if you like.
+
+5
+00:00:27.657 --> 00:00:33.835
+Claude reads the document and extracts requirements, design and project-setup data… (wait shortened)
+
+6
+00:00:34.957 --> 00:00:41.682
+Review: what Claude found — requirements, use cases, components and API endpoints.
+
+7
+00:00:41.682 --> 00:00:45.868
+Open the New Project wizard — pre-filled from the SRS.
+
+8
+00:00:45.868 --> 00:00:53.404
+Create Project: key, FP estimate, technology, description and scope all came from the SRS.
+
+9
+00:00:53.404 --> 00:00:56.895
+The start date isn’t in the SRS — add it.
+
+10
+00:00:56.895 --> 00:01:02.127
+Application Details — name, domain, category and description extracted.
+
+11
+00:01:02.127 --> 00:01:06.031
+Hardware and software are read from the document…
+
+12
+00:01:06.031 --> 00:01:10.556
+Risks, constraints, assumptions and dependencies too.
+
+13
+00:01:10.556 --> 00:01:14.307
+Functional modules identified by Claude.
+
+14
+00:01:14.307 --> 00:01:22.078
+An SRS never names the team, so a standard role-wise team is added with placeholder people. Assign real ones:
+
+15
+00:01:22.078 --> 00:01:28.687
+Add what an SRS can’t know: the Kick-Off agenda, process planning and key decisions.
+
+16
+00:01:35.007 --> 00:01:39.427
+Save Project — the wizard updates the same project in place.
+
+17
+00:01:39.427 --> 00:01:45.210
+The project home: a Messages section lists what is still missing, each with a fix button.
+
+18
+00:01:45.210 --> 00:01:51.978
+Before generating, resource loading is checked: each person’s WBS hours against their working time.
+
+19
+00:01:51.978 --> 00:01:58.987
+A JIRA-ready WBS: tasks per person with dates and estimates — download as Excel or CSV.
+
+20
+00:01:58.987 --> 00:02:04.306
+The Analysis and Design documents were written by Claude from the SRS.
+
+21
+00:02:06.561 --> 00:02:17.284
+Done: from SRS to WBS — Project created from the requirements document, completed in the wizard, team assigned and WBS generated.

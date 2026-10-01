@@ -1,0 +1,33 @@
+WEBVTT
+
+1
+00:00:00.041 --> 00:00:09.489
+Classic editor (Web App layout) — The full Data Sheet as sections with completion bars, the Messages panel, project summary and every artifact.
+
+2
+00:00:09.489 --> 00:00:16.144
+Home: completion, effort, FTE and WBS tasks at a glance — plus Messages.
+
+3
+00:00:16.144 --> 00:00:20.502
+Every Data Sheet section with its completion — click one to edit it.
+
+4
+00:00:20.502 --> 00:00:25.902
+Risks — rows extracted from the SRS, editable inline.
+
+5
+00:00:25.902 --> 00:00:32.915
+HR plan — roles, people, % contribution and dates (feeds the WBS and resource loading).
+
+6
+00:00:32.915 --> 00:00:38.935
+Project Summary: effort per phase, schedule and milestone dates — computed live.
+
+7
+00:00:38.935 --> 00:00:45.985
+Artifacts open as previews — export each as Excel, CSV, HTML, Word or PDF.
+
+8
+00:00:45.985 --> 00:00:52.303
+Switch between the Modern, Excel and Web App layouts any time — same data.

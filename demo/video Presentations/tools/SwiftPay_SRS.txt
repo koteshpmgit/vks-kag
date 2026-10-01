@@ -1,0 +1,42 @@
+Software Requirements Specification - SwiftPay Mobile Banking
+
+1. Introduction
+SwiftPay is a mobile banking application for retail customers of Acme Bank (domain: Banking / Retail Payments).
+It lets customers view balances, transfer funds and pay bills. Quality objective: zero critical defects at go-live, 99.9% availability.
+
+2. Modules
+- Account Overview: balances and transaction history
+- Fund Transfer: intra-bank and IMPS/NEFT transfers
+- Bill Payments: utility and credit card bill payments
+- Notifications: SMS and push alerts
+
+3. Functional requirements
+FR-1 Customers log in with MPIN and biometrics. FR-2 Customers transfer up to 2 lakh per day. FR-3 Customers schedule bill payments.
+
+4. Non-functional requirements
+Response time under 2 seconds for 95% of requests; 99.9% monthly availability; PCI-DSS compliance.
+
+5. Hardware and software
+Hardware: 2 x application servers (16 vCPU, 64 GB RAM); 1 x database server (32 vCPU, 128 GB RAM, 2 TB SSD).
+Software: PostgreSQL 16, Node.js 20, React Native 0.74, Nginx 1.25.
+
+6. Environments
+Development (dev.swiftpay.internal, developers - full access), UAT (uat.swiftpay.internal, testers - read/write), Production (prod cluster, ops only).
+
+7. Constraints
+Must reuse the existing core banking API of the bank. Go-live before the festive season (October).
+
+8. Assumptions
+Core banking sandbox is available to the team from week 1. Customers have Android 10+ or iOS 15+.
+
+9. Dependencies
+SMS gateway vendor contract. Core banking team for API changes.
+
+10. Risks
+Delays in core banking API changes. Regulatory changes to UPI limits. Security audit findings late in the cycle.
+
+11. Training
+Team needs PCI-DSS awareness training and React Native training.
+
+12. Inputs handed over
+Existing API specification v3.2 (soft copy), brand guidelines (soft copy).

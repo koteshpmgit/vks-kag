@@ -277,11 +277,33 @@
     goTo(idx, { auto: state.mode === 'autorun' && state.playing });
   };
 
+  // ---------------- Deep links ----------------
+  // index.html#<chapter-id>       opens that chapter in Explore mode
+  // index.html#<chapter-id>:play  autoplays the tour from that chapter
+  // (used by "video Presentations/index.html" to link to each feature)
+  function sceneFromHash() {
+    const [id, mode] = decodeURIComponent(window.location.hash.slice(1)).split(':');
+    const idx = SCENES.findIndex((s) => s.id === id);
+    return idx < 0 ? null : { idx, play: mode === 'play' };
+  }
+  window.addEventListener('hashchange', () => {
+    const link = sceneFromHash();
+    if (!link) return;
+    setMode(link.play ? 'autorun' : 'explore');
+    goTo(link.idx, { auto: link.play });
+  });
+
   // ---------------- Boot ----------------
+  const link = sceneFromHash();
   renderRail();
   renderProgress();
-  renderScene(0);
+  renderScene(link ? link.idx : 0);
   updateTransportButtons();
-  setCaption(SCENES[0].blurb, 'GUIDE');
-  window.setTimeout(() => { goTo(0, { auto: true }); }, 1100);
+  if (link && !link.play) {
+    setMode('explore');
+    goTo(link.idx);
+  } else {
+    setCaption(SCENES[link ? link.idx : 0].blurb, 'GUIDE');
+    window.setTimeout(() => { goTo(link ? link.idx : 0, { auto: true }); }, 1100);
+  }
 })();

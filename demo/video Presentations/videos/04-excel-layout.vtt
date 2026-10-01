@@ -1,0 +1,37 @@
+WEBVTT
+
+1
+00:00:00.007 --> 00:00:10.617
+Excel layout — A faithful replica of Key Artifact Generator-V1.0.xls: the Data Sheet, sheet tabs, macros as buttons and sheet protection.
+
+2
+00:00:10.617 --> 00:00:16.052
+The Data Sheet, exactly like the workbook — jump to a section from the left panel.
+
+3
+00:00:16.052 --> 00:00:20.461
+Project-Data → Risks (the workbook’s GoToDataSection macro).
+
+4
+00:00:20.461 --> 00:00:24.730
+Sheet tabs are the generated artifacts — the Kick-Off deck…
+
+5
+00:00:24.730 --> 00:00:28.850
+…the Application Initiation Note, renamed per project…
+
+6
+00:00:28.850 --> 00:00:32.326
+…and every Internal Project Plan section.
+
+7
+00:00:32.326 --> 00:00:40.397
+WBS For JIRA — generated from the HR plan and task templates (the GenWBS2 macro).
+
+8
+00:00:40.397 --> 00:00:45.811
+Protect / Unprotect toggles read-only mode, like the sheet-protection radios.
+
+9
+00:00:45.811 --> 00:00:51.184
+Copy To Desktop downloads the chosen artifact as an Excel file.

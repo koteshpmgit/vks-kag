@@ -76,8 +76,15 @@ Analysis/Design documents.
   `demo/index.html` in a browser; no backend needed). It walks through the SRS-first flow
   (upload → review → pre-filled wizard → Messages → archive & delete), then the Data Sheet, effort
   calculation, WBS (with the resource loading check and its "Generate anyway" prompt),
-  artifacts, export and layouts. Switch to **Explore** to click through it
+  artifacts, export and layouts. Link straight to a chapter with `demo/index.html#<chapter>`
+  (Explore mode) or `#<chapter>:play` (autoplay). Switch to **Explore** to click through it
   yourself; the Messages chapter's fix buttons really open the wizard on the right step.
+- **Video presentations** — [demo/video Presentations/](demo/video%20Presentations/): open its
+  `index.html` for a slide-style site with walkthrough videos of each way of using the app
+  (SRS-first onboarding, the Classic, Modern and Excel layouts, managing projects, and the
+  recorded demo tour) plus a feature index linking every feature to its video and demo
+  chapter. Every video has an English voice-over in sync with the screen, subtitles and a
+  clickable transcript. Recording scripts to regenerate the videos are in its `tools/` folder.
 
 ## SRS upload flow
 
@@ -195,6 +202,7 @@ vks-kag/
 │       ├── data/                 # section definitions, completion logic
 │       └── styles/
 ├── demo/                         # standalone interactive product tour
+│   └── video Presentations/      # walkthrough videos + presentation site (index.html), tools/ to re-record
 └── docs/                         # deployment notes (PDF)
 ```
 

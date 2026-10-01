@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key Artifact Generator — Video Presentations</title>
+<meta name="description" content="Video walkthroughs and a feature index for Key Artifact Generator: SRS-first onboarding, the three editors, WBS with resource loading, artifacts and project management.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%230f766e%22/><text x=%2250%22 y=%2266%22 font-size=%2250%22 font-family=%22Arial%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22>KA</text></svg>">
+<link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+<div id="progress" aria-hidden="true"><span></span></div>
+
+<header id="topbar">
+  <a class="brand" href="#intro"><span class="logo">KA</span><span><b>Key Artifact Generator</b><small>Video Presentations</small></span></a>
+  <nav class="top-links">
+    <a href="#features">All features</a>
+    <a href="../index.html" target="_blank" rel="noopener">Interactive demo ↗</a>
+    <button type="button" id="presentBtn" title="Present full-screen (F)">▶ Present</button>
+  </nav>
+</header>
+
+<nav id="dots" aria-label="Slides"></nav>
+
+<main id="deck">
+
+  <!-- ===================== Intro ===================== -->
+  <section class="slide hero" id="intro" data-title="Introduction">
+    <div class="slide-inner">
+      <p class="kicker">Product walkthrough</p>
+      <h1>Key Artifact Generator</h1>
+      <p class="lead">Turn a requirements document into a complete project: Claude reads the SRS, creates and pre-fills the project, writes the Analysis &amp; Design documents — and one Data Sheet drives the Kick-Off deck, AIN, Internal Project Plan and a JIRA-ready WBS.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#onboarding">Start the presentation →</a>
+        <a class="btn" href="#overview">Watch the 2-minute overview</a>
+        <a class="btn" href="#features">Browse all features</a>
+      </div>
+      <ul class="ways">
+        <li><a href="#onboarding"><b>SRS-first onboarding</b><span>Upload → review → pre-filled wizard → WBS</span></a></li>
+        <li><a href="#classic"><b>Classic editor</b><span>Sections, summary, artifacts</span></a></li>
+        <li><a href="#modern"><b>Modern layout</b><span>Sidebar, tabs, live summary</span></a></li>
+        <li><a href="#excel"><b>Excel layout</b><span>The original workbook, on the web</span></a></li>
+        <li><a href="#manage"><b>Managing projects</b><span>Manual create, archive, delete</span></a></li>
+        <li><a href="#overview"><b>Interactive demo tour</b><span>Every feature in 14 chapters</span></a></li>
+      </ul>
+      <p class="hint">🔊 Every video is narrated, with subtitles (<b>CC</b>) and a clickable transcript · <kbd>→</kbd> / <kbd>←</kbd> or scroll between slides · <kbd>F</kbd> to present full-screen</p>
+    </div>
+  </section>
+
+  <!-- ===================== Videos ===================== -->
+  <section class="slide video-slide" id="overview" data-title="Overview tour">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Overview · 1:58</p>
+        <h2>The interactive demo tour</h2>
+        <p>A self-running tour of everything the app does — no backend needed. Fourteen chapters, from sign-up to the recap.</p>
+        <ul class="points">
+          <li>SRS-first onboarding, review and the pre-filled wizard</li>
+          <li>Messages, archive &amp; delete, the Data Sheet engine</li>
+          <li>WBS with the resource loading check, 12 artifacts, 5 export formats</li>
+          <li>Three switchable layouts and Protect mode</li>
+        </ul>
+        <div class="links"><a href="../index.html#welcome:play" target="_blank" rel="noopener">Play the live tour ↗</a><a href="../index.html#welcome" target="_blank" rel="noopener">Explore it yourself ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/00-interactive-demo-tour.jpg" src="videos/00-interactive-demo-tour.mp4"></video><figcaption>🔊 Narrated · interactive demo tour (recorded)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="slide video-slide" id="onboarding" data-title="SRS-first onboarding">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Way of working 1 · 2:18</p>
+        <h2>SRS-first onboarding</h2>
+        <p>Sign up, upload the requirements document — the project is created for you and filled in by Claude.</p>
+        <ol class="steps">
+          <li><b>Upload</b> a .pdf, .txt or .md SRS (up to 10 MB); the Project Key defaults to the file name.</li>
+          <li><b>Review</b> what Claude extracted: requirements, use cases, components, API endpoints.</li>
+          <li><b>Open the pre-filled wizard</b>: add the start date, assign real people to the default team, add the agenda / process / decisions.</li>
+          <li><b>Generate the WBS</b> — resource loading is checked first.</li>
+        </ol>
+        <div class="links"><a href="../index.html#start" target="_blank" rel="noopener">Upload step in the demo ↗</a><a href="../index.html#wizard" target="_blank" rel="noopener">Pre-filled wizard ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/01-srs-first-onboarding.jpg" src="videos/01-srs-first-onboarding.mp4"></video><figcaption>🔊 Narrated · real app · the AI wait is shortened</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="slide video-slide" id="classic" data-title="Classic editor">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Way of working 2 · 0:53</p>
+        <h2>Classic editor <small>(/classic)</small></h2>
+        <p>The full Data Sheet as sections with completion bars — the place for detailed editing.</p>
+        <ul class="points">
+          <li>Home with completion, effort, FTE, WBS tasks and the Messages panel</li>
+          <li>Every section editable inline (risks, HR plan, …)</li>
+          <li>Project Summary: effort per phase, schedule and milestones</li>
+          <li>Artifacts open as previews and export to Excel, CSV, HTML, Word or PDF</li>
+        </ul>
+        <div class="links"><a href="../index.html#datasheet" target="_blank" rel="noopener">Data Sheet in the demo ↗</a><a href="../index.html#artifacts" target="_blank" rel="noopener">Artifacts ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/02-classic-editor.jpg" src="videos/02-classic-editor.mp4"></video><figcaption>🔊 Narrated · real app · Web App layout</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="slide video-slide" id="modern" data-title="Modern layout">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Way of working 3 · 0:37</p>
+        <h2>Modern layout <small>(/modern)</small></h2>
+        <p>A sidebar of sections with completion badges, for fast navigation across the whole project.</p>
+        <ul class="points">
+          <li>Messages at the top of every page</li>
+          <li>Accordion or tab editing</li>
+          <li>Live project summary popover</li>
+          <li>Artifacts from the sidebar</li>
+        </ul>
+        <div class="links"><a href="../index.html#layouts" target="_blank" rel="noopener">Layouts in the demo ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/03-modern-layout.jpg" src="videos/03-modern-layout.mp4"></video><figcaption>🔊 Narrated · real app · Modern UI</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="slide video-slide" id="excel" data-title="Excel layout">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Way of working 4 · 0:53</p>
+        <h2>Excel layout <small>(/excel)</small></h2>
+        <p>A faithful replica of <i>Key Artifact Generator-V1.0.xls</i> for users who know the workbook.</p>
+        <ul class="points">
+          <li>Data Sheet with section drop-downs (GoToDataSection)</li>
+          <li>Sheet tabs for every generated artifact</li>
+          <li>Generate WBS (GenWBS2) and Copy To Desktop</li>
+          <li>Protect / Unprotect read-only mode</li>
+        </ul>
+        <div class="links"><a href="../index.html#layouts" target="_blank" rel="noopener">Protect mode in the demo ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/04-excel-layout.jpg" src="videos/04-excel-layout.mp4"></video><figcaption>🔊 Narrated · real app · Excel UI</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="slide video-slide" id="manage" data-title="Managing projects">
+    <div class="slide-inner split">
+      <div class="copy">
+        <p class="kicker">Way of working 5 · 0:52</p>
+        <h2>Managing projects</h2>
+        <p>Create a project without an SRS, switch between projects, and tidy up when work is done.</p>
+        <ul class="points">
+          <li><b>Create manually</b> — the same wizard with a blank draft</li>
+          <li><b>Archive</b> hides a project but keeps its data; <b>Restore</b> it from the start screen</li>
+          <li><b>Delete</b> is permanent, and offers <i>Archive instead</i></li>
+          <li>Only the project owner can archive or delete it</li>
+        </ul>
+        <div class="links"><a href="../index.html#manage" target="_blank" rel="noopener">Archive &amp; delete in the demo ↗</a></div>
+      </div>
+      <figure class="player"><video controls preload="none" poster="videos/05-manage-projects.jpg" src="videos/05-manage-projects.mp4"></video><figcaption>🔊 Narrated · real app · project home and start screen</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ===================== Feature index ===================== -->
+  <section class="slide" id="features" data-title="All features">
+    <div class="slide-inner wide">
+      <p class="kicker">Feature index</p>
+      <h2>Everything the application can do</h2>
+      <p class="lead small">Each feature links to the video that shows it and to its chapter in the interactive demo.</p>
+      <div class="feature-grid">
+        <article><h3>🔐 Accounts</h3><p>Email sign-up and login; each user only sees their own projects.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#auth" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🤖 SRS upload &amp; AI extraction</h3><p>Upload a .pdf/.txt/.md SRS; Claude creates the project and extracts requirements, design and setup data.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#start" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>✅ Review</h3><p>Counts of business, functional and non-functional requirements, use cases, components and endpoints.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#review" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🧭 Pre-filled wizard</h3><p>The New Project wizard opens filled from the SRS; saving updates the same project.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#wizard" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🔔 Messages</h3><p>What's missing — Action needed, Recommended, Tip — each with a button to the fix.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#messages" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🗃️ Archive &amp; delete</h3><p>Hide finished projects (restorable) or delete them permanently.</p><div class="links"><a href="#manage">Video</a><a href="../index.html#manage" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🗂️ Data Sheet</h3><p>Four groups, two dozen sections — application, project, resource and standards data.</p><div class="links"><a href="#classic">Video</a><a href="../index.html#datasheet" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>📊 Effort &amp; schedule</h3><p>Phase effort, total MD/Hr, FTE, milestones and end date recompute live.</p><div class="links"><a href="#classic">Video</a><a href="../index.html#effort" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>👥 Default team plan</h3><p>SRS projects start with a role-wise HR plan; replace the placeholder people.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#wizard" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>⚖️ Resource loading</h3><p>Before the WBS: over-allocation blocks, overloads ask to confirm, with the % that fits.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#wbs" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🧩 WBS for JIRA</h3><p>Task templates per HR-plan role, scaled by % contribution, with dates and estimates.</p><div class="links"><a href="#onboarding">Video</a><a href="../index.html#wbs" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>⏰ Timesheet</h3><p>Day-wise timesheet entries generated from the WBS, editable and exportable.</p><div class="links"><a href="#excel">Video</a><a href="../index.html#wbs" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>📄 12 artifacts</h3><p>Analysis &amp; Design, Kick-Off, AIN, AIN-Project, IPP sections, WBS, Folder Structure.</p><div class="links"><a href="#classic">Video</a><a href="../index.html#artifacts" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>⬇️ Export</h3><p>Every artifact as Excel, CSV, HTML, Word or PDF; Copy To Desktop in the Excel layout.</p><div class="links"><a href="#excel">Video</a><a href="../index.html#export" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🎨 Three layouts</h3><p>Classic, Modern and Excel — the same data, switchable any time.</p><div class="links"><a href="#modern">Video</a><a href="../index.html#layouts" target="_blank" rel="noopener">Demo ↗</a></div></article>
+        <article><h3>🔒 Protect mode</h3><p>Read-only sheet protection, as in the original workbook.</p><div class="links"><a href="#excel">Video</a><a href="../index.html#layouts" target="_blank" rel="noopener">Demo ↗</a></div></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Get started ===================== -->
+  <section class="slide" id="start" data-title="Get started">
+    <div class="slide-inner">
+      <p class="kicker">Try it</p>
+      <h2>Run it yourself</h2>
+      <div class="split even">
+        <div>
+          <h3>With Docker</h3>
+          <pre><code>cd backend  &amp;&amp; npm install &amp;&amp; cd ..
+cd frontend &amp;&amp; npm install &amp;&amp; cd ..
+# .env (repo root): JWT_SECRET, ANTHROPIC_API_KEY
+docker compose up -d --build</code></pre>
+          <p>Then open <b>http://localhost:8081</b> and sign up.</p>
+        </div>
+        <div>
+          <h3>Without installing anything</h3>
+          <p>The <a href="../index.html" target="_blank" rel="noopener">interactive demo</a> runs in any browser — no backend, no account. Switch to <b>Explore</b> to click through every chapter yourself.</p>
+          <p>Full documentation — setup, environment variables, API and troubleshooting — is in the project <b>README.md</b>.</p>
+        </div>
+      </div>
+      <p class="hint"><a href="#intro">↑ Back to the start</a></p>
+    </div>
+  </section>
+</main>
+
+<script src="narration.js"></script>
+<script src="presentation.js"></script>
+</body>
+</html>
